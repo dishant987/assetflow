@@ -36,12 +36,12 @@ export default function AuditsPage() {
   useEffect(() => { fetchItems(); }, []);
 
   const cols: Column<Cycle>[] = [
-    { key: "id", label: "#", sortable: true },
-    { key: "title", label: "Title", sortable: true, render: (r) => <a href={`/audits/${r.id}`} onClick={(e) => { e.preventDefault(); nav(`/audits/${r.id}`); }} style={{ color: "var(--color-primary)", cursor: "pointer" }}>{r.title}</a> },
+    { key: "title", label: "Title", sortable: true, render: (r) => <a href={`/audits/${r.id}`} onClick={(e) => { e.preventDefault(); nav(`/audits/${r.id}`); }} style={{ color: "var(--color-primary)", fontWeight: 600, cursor: "pointer", textDecoration: "none" }}>{r.title}</a> },
     { key: "itemCount", label: "Items", sortable: true },
     { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
     { key: "startedAt", label: "Started", render: (r) => r.startedAt ? new Date(r.startedAt).toLocaleDateString() : "—" },
     { key: "completedAt", label: "Completed", render: (r) => r.completedAt ? new Date(r.completedAt).toLocaleDateString() : "—" },
+    { key: "createdAt", label: "Created", sortable: true, render: (r) => new Date(r.createdAt).toLocaleDateString() },
   ];
 
   return (
@@ -79,7 +79,7 @@ function CreateModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
       if (form.scopeLocation) payload.scopeLocation = form.scopeLocation;
       const auditorIds = form.auditorIdsStr ? form.auditorIdsStr.split(",").map(s => s.trim()).filter(Boolean) : [];
       if (auditorIds.length) payload.auditorIds = auditorIds;
-      const r = await api.post("/audits", payload);
+      await api.post("/audits", payload);
       showToast("Audit cycle created successfully", "success");
       onDone();
     } catch (err: unknown) {
@@ -123,7 +123,7 @@ function CreateModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
         <Input label="Auditor IDs (comma-separated)" value={form.auditorIdsStr} onChange={(e) => setForm({...form, auditorIdsStr: e.target.value})} placeholder="Emails or IDs" />
         <div className="modal-footer" style={{ padding: 0, border: "none" }}>
           <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
-          <Button type="submit" loading={saving}>Create & Populate</Button>
+          <Button type="submit" loading={saving}>Create Audit</Button>
         </div>
       </form>
     </Modal>

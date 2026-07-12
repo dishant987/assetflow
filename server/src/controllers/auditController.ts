@@ -18,6 +18,9 @@ export async function createCycle(req: Request, res: Response) {
 
 export async function populateItems(req: Request, res: Response) {
   const count = await service.populateItems(req.params.id, req.user ? { role: req.user.role, userId: req.user.id } : undefined);
+  if (count === 0) {
+    return res.status(200).json({ data: { message: "No assets matched the scope criteria", count } });
+  }
   res.json({ data: { count } });
 }
 

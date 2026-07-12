@@ -237,24 +237,27 @@ export async function populateItems(cycleId: string, opts?: { role: string; user
 
   if (!cycle) throw new AppError("NOT_FOUND", "Audit cycle not found.", 404);
 
+  // scopeLocation filters which physical assets to include.
+  // scopeDepartmentId is ONLY for access control — when location is blank it means "audit all".
   const conditions = [ne(assets.status, "retired")];
 
   if (cycle.scopeLocation) {
-    conditions.push(eq(assets.location, cycle.scopeLocation));
+    // Exact or partial location match
+    conditions.push(sql`lower(${assets.location}) like lower(${"%" + cycle.scopeLocation + "%"})`);
   }
 
-  if (cycle.scopeDepartmentId) {
-    conditions.push(sql`${assets.id} IN (
-      SELECT asset_id FROM allocations WHERE department_id = ${cycle.scopeDepartmentId} AND status = 'active'
-    )`);
-  }
+  // NOTE: scopeDepartmentId intentionally NOT used as an asset filter here.
+  // It controls who can manage the audit cycle, not which assets appear in scope.
+  // If you need department-restricted audits, set scopeLocation to the department's floor/room.
 
   const all = await db
     .select({ id: assets.id, location: assets.location })
     .from(assets)
     .where(and(...conditions));
 
-  if (all.length === 0) return 0;
+  if (all.length === 0) {
+    return 0;
+  }
 
   // Clear existing items first to allow re-populating safely
   await db.delete(auditItems).where(eq(auditItems.auditCycleId, cycleId));
@@ -268,6 +271,21 @@ export async function populateItems(cycleId: string, opts?: { role: string; user
 export async function updateCycleStatus(id: string, status: string, opts?: { role: string; userId: string }) {
   await checkCycleAccess(id, opts);
   const cycle = await getCycleById(id, opts);
+
+  // Guard invalid transitions
+  const validTransitions: Record<string, string[]> = {
+    in_progress: ["planned"],
+    completed:   ["in_progress"],
+    cancelled:   ["planned", "in_progress"],
+  };
+  if (!validTransitions[status]?.includes(cycle.status)) {
+    throw new AppError(
+      "INVALID_TRANSITION",
+      `Cannot move audit from "${cycle.status}" to "${status}".`,
+      400,
+    );
+  }
+
   const updates: Record<string, unknown> = { status };
   if (status === "in_progress") updates.startedAt = new Date();
   if (status === "completed") updates.completedAt = new Date();

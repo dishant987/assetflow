@@ -230,7 +230,8 @@ function EditModal({ asset, categories, onClose, onSaved }: { asset: Asset; cate
       }
     }
     fetchDetail();
-  }, [asset.id, onClose]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [asset.id]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
