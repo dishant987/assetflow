@@ -3,7 +3,7 @@ import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { enUS } from "date-fns/locale";
 import "react-big-calendar/lib/css/react-big-calendar.css";
-import { Button, Modal, Input, Card, StatusBadge, showToast } from "../components/ui";
+import { Button, Modal, Input, Card, StatusBadge, showToast, PageLoader, EmptyState } from "../components/ui";
 import api from "../lib/api";
 
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales: { "en-US": enUS } });
@@ -23,11 +23,14 @@ type Booking = {
 
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Booking | null>(null);
 
   const fetchBookings = useCallback(async () => {
+    setLoading(true);
     try { const { data } = await api.get("/bookings"); setBookings(data.data); } catch { }
+    finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchBookings(); }, [fetchBookings]);
@@ -51,7 +54,7 @@ export default function BookingsPage() {
         <Button onClick={() => setShowCreate(true)}>+ New Booking</Button>
       </div>
 
-      <Card style={{ padding: 16 }}>
+      {loading ? <PageLoader /> : bookings.length === 0 ? <EmptyState title="No bookings yet" description="Create a booking to reserve an asset." /> : <Card style={{ padding: 16 }}>
         <Calendar
           localizer={localizer}
           events={events}
@@ -63,7 +66,7 @@ export default function BookingsPage() {
           views={["month", "week", "day"]}
           defaultView="week"
         />
-      </Card>
+      </Card>}
 
       {showCreate && <CreateBookingModal onClose={() => setShowCreate(false)} onDone={() => { setShowCreate(false); fetchBookings(); }} />}
       {selectedEvent && <BookingDetailModal booking={selectedEvent} onClose={() => setSelectedEvent(null)} onDone={() => { setSelectedEvent(null); fetchBookings(); }} />}

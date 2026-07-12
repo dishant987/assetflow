@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Card, StatusBadge, Badge, Button, showToast } from "../components/ui";
+import { Card, StatusBadge, Badge, Button, showToast, PageLoader } from "../components/ui";
 import { QRCodeSVG } from "qrcode.react";
 import api from "../lib/api";
 
@@ -59,7 +59,7 @@ export default function AssetDetailPage() {
     api.get(`/assets/${id}/maintenance`).then(({ data }) => setMaintenance(data.data)).catch(() => {});
   }, [id]);
 
-  if (!asset) return <p>Loading...</p>;
+  if (!asset) return <PageLoader />;
 
   return (
     <div className="flex flex-col gap-lg">

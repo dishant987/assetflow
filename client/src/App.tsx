@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
@@ -19,6 +20,8 @@ import AuditsPage from "./pages/AuditsPage";
 import AuditDetailPage from "./pages/AuditDetailPage";
 import ReportsPage from "./pages/ReportsPage";
 import NotificationsPage from "./pages/NotificationsPage";
+import ActivityLogPage from "./pages/ActivityLogPage";
+import NotFound from "./pages/NotFound";
 import { RequireAuth } from "./components/auth/RequireAuth";
 import { RequireRole } from "./components/auth/RequireRole";
 import { AppLayout } from "./components/layout/AppLayout";
@@ -26,6 +29,10 @@ import { AppLayout } from "./components/layout/AppLayout";
 const queryClient = new QueryClient();
 
 function App() {
+  useEffect(() => {
+    fetch("/api/health").catch(() => {});
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
@@ -54,11 +61,13 @@ function App() {
                 <Route path="audits" element={<AuditsPage />} />
                 <Route path="audits/:id" element={<AuditDetailPage />} />
                 <Route path="reports" element={<ReportsPage />} />
+                <Route path="activity-log" element={<ActivityLogPage />} />
               </Route>
               <Route path="bookings" element={<BookingsPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
             </Route>
           </Route>
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
       <Toaster />

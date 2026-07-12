@@ -1,21 +1,21 @@
+import { v2 as cloudinary } from "cloudinary";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
 import multer from "multer";
-import path from "path";
-import crypto from "crypto";
+import { env } from "./env";
 
-const storage = multer.diskStorage({
-  destination: path.resolve(__dirname, "../../uploads"),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${crypto.randomUUID()}${ext}`);
-  },
+cloudinary.config({
+  cloud_name: env.CLOUDINARY_CLOUD_NAME,
+  api_key: env.CLOUDINARY_API_KEY,
+  api_secret: env.CLOUDINARY_API_SECRET,
 });
 
-export const upload = multer({
-  storage,
-  limits: { fileSize: 10 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    const allowed = /\.(jpg|jpeg|png|gif|webp|pdf|doc|docx|xlsx|csv)$/i;
-    if (allowed.test(path.extname(file.originalname))) return cb(null, true);
-    cb(new Error("File type not allowed"));
-  },
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: async () => ({
+    folder: "assetflow",
+    allowed_formats: ["jpg", "jpeg", "png", "gif", "webp", "pdf", "doc", "docx", "xlsx", "csv"],
+    max_file_size: 10 * 1024 * 1024,
+  }),
 });
+
+export const upload = multer({ storage });

@@ -17,6 +17,7 @@ export async function create(data: {
   name: string;
   code: string;
   description?: string;
+  parentId?: number | null;
   headEmployeeId?: number;
 }) {
   const [existing] = await db
@@ -32,7 +33,7 @@ export async function create(data: {
 
 export async function update(
   id: number,
-  data: { name?: string; code?: string; description?: string; headEmployeeId?: number | null },
+  data: { name?: string; code?: string; description?: string; parentId?: number | null; headEmployeeId?: number | null },
 ) {
   await getById(id);
 

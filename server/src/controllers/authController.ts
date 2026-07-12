@@ -11,10 +11,11 @@ export async function login(req: Request, res: Response) {
   const { email, password } = req.body;
   const result = await authService.login(email, password);
 
+  const isProd = (process.env.NODE_ENV ?? "development") === "production";
   res.cookie("refreshToken", result.refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000,
     path: "/api/auth",
   });

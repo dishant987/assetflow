@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Button, Input, Table, Card, StatusBadge, Modal, showToast } from "../components/ui";
+import { Button, Input, Table, Card, StatusBadge, Modal, showToast, PageLoader, EmptyState } from "../components/ui";
 import type { Column } from "../components/ui";
 import api from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
@@ -24,6 +24,7 @@ type TransferReq = { id: number; assetId: number; assetTag: string; fromEmployee
 export default function AllocationsPage() {
   const [allocations, setAllocations] = useState<Allocation[]>([]);
   const [transfers, setTransfers] = useState<TransferReq[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showAllocate, setShowAllocate] = useState(false);
   const [showReturn, setShowReturn] = useState<Allocation | null>(null);
   const [showTransfer, setShowTransfer] = useState<{ assetTag: string; allocationId: number } | null>(null);
@@ -31,11 +32,13 @@ export default function AllocationsPage() {
   const user = useAuthStore((s) => s.user);
 
   const fetchAll = useCallback(async () => {
+    setLoading(true);
     try {
       const [a, t] = await Promise.all([api.get("/allocations"), api.get("/transfers")]);
       setAllocations(a.data.data);
       setTransfers(t.data.data);
     } catch { /* */ }
+    finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
@@ -87,7 +90,11 @@ export default function AllocationsPage() {
       </div>
 
       <Card>
-        {tab === "allocations" ? <Table columns={cols} data={allocations} /> : <Table columns={transferCols} data={transfers} />}
+        {loading ? <PageLoader /> : tab === "allocations" ? (
+          allocations.length === 0 ? <EmptyState title="No allocations yet" description="Allocate an asset to get started." /> : <Table columns={cols} data={allocations} />
+        ) : (
+          transfers.length === 0 ? <EmptyState title="No transfer requests" description="Pending transfers will appear here." /> : <Table columns={transferCols} data={transfers} />
+        )}
       </Card>
 
       {showAllocate && <AllocateModal onClose={() => setShowAllocate(false)} onDone={() => { setShowAllocate(false); fetchAll(); }} onTransfer={(tag, allocId) => { setShowAllocate(false); setShowTransfer({ assetTag: tag, allocationId: allocId }); }} />}

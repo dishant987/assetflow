@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { Button, Input, Select, Table, Card, StatusBadge, showToast, Modal } from "../components/ui";
+import { Button, Input, Select, Table, Card, StatusBadge, showToast, Modal, PageLoader } from "../components/ui";
 import type { Column } from "../components/ui";
 import api from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
@@ -23,9 +23,12 @@ type Cycle = {
   id: number;
   title: string;
   description: string | null;
+  plannedStart: string | null;
+  plannedEnd: string | null;
   status: string;
   startedAt: string | null;
   completedAt: string | null;
+  conductedBy: number | null;
   notes: string | null;
   items: AuditItem[];
 };
@@ -63,6 +66,7 @@ export default function AuditDetailPage() {
 
   const [editing, setEditing] = useState<AuditItem | null>(null);
 
+  if (!cycle) return <PageLoader />;
   return (
     <div className="page">
       <div className="page-header">
@@ -77,6 +81,26 @@ export default function AuditDetailPage() {
         </div>
       </div>
       {cycle?.description && <p style={{ marginBottom: 16, color: "var(--color-text-secondary)" }}>{cycle.description}</p>}
+      <div className="flex gap-sm" style={{ marginBottom: 16, flexWrap: "wrap", fontSize: 13, color: "var(--color-text-muted)" }}>
+        {cycle?.plannedStart && <span>Planned: {cycle.plannedStart} → {cycle.plannedEnd ?? "TBD"}</span>}
+        {cycle?.conductedBy && <span>| Assigned to: User #{cycle.conductedBy}</span>}
+        {cycle?.status === "completed" && isAdminMgr && (
+          <Button size="sm" variant="ghost" onClick={async () => {
+            try {
+              const r = await api.get(`/audits/${id}/discrepancies`);
+              if (r.data.data.length === 0) { showToast("No discrepancies found", "success"); return; }
+              const csv = "Tag,Asset,Expected Location,Actual Location,Verdict,Discrepancy,Notes\n" +
+                r.data.data.map((d: Record<string, unknown>) =>
+                  [d.assetTag, d.assetName, d.expectedLocation, d.actualLocation, d.verdict, d.discrepancy, d.notes].map((v) => `"${v ?? ""}"`).join(",")
+                ).join("\n");
+              const blob = new Blob([csv], { type: "text/csv" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a"); a.href = url; a.download = `discrepancies-${id}.csv`; a.click();
+              URL.revokeObjectURL(url);
+            } catch { showToast("Failed", "error"); }
+          }}>Export Discrepancies</Button>
+        )}
+      </div>
       <Card><Table columns={cols} data={cycle?.items ?? []} /></Card>
       {editing && (
         <VerdictModal item={editing} onClose={() => setEditing(null)} onDone={() => { setEditing(null); fetchCycle(); }} />

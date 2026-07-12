@@ -5,7 +5,8 @@ import { employees } from "../models/employees";
 import { departments } from "../models/departments";
 import { AppError } from "../utils/AppError";
 import { eq, and, isNull, sql } from "drizzle-orm";
-import { notifications } from "../models/notifications";
+import * as notificationService from "./notificationService";
+import * as activityLog from "./activityLogService";
 
 export async function list() {
   return db
@@ -88,13 +89,20 @@ export async function create(data: { assetId: number; employeeId: number; depart
   // Update asset status
   await db.update(assets).set({ status: "allocated" }).where(eq(assets.id, data.assetId));
 
-  // Notify employee
-  await db.insert(notifications).values({
+  await notificationService.create({
     employeeId: data.employeeId,
     title: "Asset Allocated",
     message: `Asset ${asset.assetTag} (${asset.name}) has been allocated to you.`,
     type: "allocation",
     link: `/allocations/${alloc.id}`,
+  });
+
+  await activityLog.log({
+    employeeId: data.employeeId,
+    action: "allocated",
+    entityType: "allocation",
+    entityId: alloc.id,
+    details: { assetId: data.assetId, assetTag: asset.assetTag },
   });
 
   return alloc;

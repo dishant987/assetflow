@@ -11,6 +11,8 @@ const router = Router();
 const createSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
+  plannedStart: z.string().optional(),
+  plannedEnd: z.string().optional(),
   conductedBy: z.number().int().positive().optional(),
 });
 
@@ -31,5 +33,6 @@ router.post("/:id/start", roleGuard("admin", "manager"), asyncHandler(ctrl.start
 router.post("/:id/complete", roleGuard("admin", "manager"), asyncHandler(ctrl.completeCycle));
 router.post("/:id/cancel", roleGuard("admin", "manager"), asyncHandler(ctrl.cancelCycle));
 router.patch("/items/:itemId/verdict", roleGuard("admin", "manager"), validate(verdictSchema), asyncHandler(ctrl.updateItemVerdict));
+router.get("/:id/discrepancies", roleGuard("admin", "manager"), asyncHandler(ctrl.discrepancyReport));
 
 export default router;

@@ -6,21 +6,21 @@ interface Props {
 }
 
 const bg: Record<string, string> = {
-  default: "#F0EBF0",
-  success: "#E0F5F4",
-  warning: "#FFFBEB",
-  error: "#FEF2F2",
-  info: "#E0E7FF",
-  muted: "#F3F4F6",
+  default: "var(--color-primary-light)",
+  success: "var(--color-secondary-light)",
+  warning: "var(--color-warning-light, #FFFBEB)",
+  error: "var(--color-error-light, #FEF2F2)",
+  info: "var(--color-info-light, #E0E7FF)",
+  muted: "var(--color-muted-light, #F3F4F6)",
 };
 
 const fg: Record<string, string> = {
-  default: "#714B67",
-  success: "#00A09D",
-  warning: "#B45309",
-  error: "#DC2626",
-  info: "#3B82F6",
-  muted: "#6B7280",
+  default: "var(--color-primary)",
+  success: "var(--color-secondary)",
+  warning: "var(--color-warning)",
+  error: "var(--color-error)",
+  info: "var(--color-info, #3B82F6)",
+  muted: "var(--color-muted, #6B7280)",
 };
 
 export function Badge({ variant = "default", children }: Props) {

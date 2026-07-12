@@ -16,6 +16,10 @@ export const colors = {
   errorLight: "#FEF2F2",
   warningLight: "#FFFBEB",
   successLight: "#F0FDFA",
+  info: "#3B82F6",
+  infoLight: "#E0E7FF",
+  muted: "#6B7280",
+  mutedLight: "#F3F4F6",
   status: {
     available: "#00A09D",
     allocated: "#3B82F6",

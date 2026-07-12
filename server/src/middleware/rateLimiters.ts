@@ -1,3 +1,5 @@
+// ponytail: in-memory store — limits reset on every server restart / Render redeploy.
+// Swap to Redis (via `rate-limit-redis`) for multi-instance or persistent production.
 import rateLimit from "express-rate-limit";
 import { Request } from "express";
 import { AppError } from "../utils/AppError";

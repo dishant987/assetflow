@@ -10,6 +10,10 @@ import bookingRoutes from "./bookings";
 import maintenanceRoutes from "./maintenance";
 import uploadRoutes from "./upload";
 import auditRoutes from "./audits";
+import notificationRoutes from "./notifications";
+import activityLogRoutes from "./activityLogs";
+import reportRoutes from "./reports";
+import dashboardRoutes from "./dashboard";
 
 const router = Router();
 
@@ -28,5 +32,9 @@ router.use("/bookings", bookingRoutes);
 router.use("/maintenance", maintenanceRoutes);
 router.use("/upload", uploadRoutes);
 router.use("/audits", auditRoutes);
+router.use("/notifications", notificationRoutes);
+router.use("/activity-logs", activityLogRoutes);
+router.use("/reports", reportRoutes);
+router.use("/dashboard", dashboardRoutes);
 
 export default router;

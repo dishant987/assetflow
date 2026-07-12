@@ -1,7 +1,10 @@
+import { useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, Topbar, Breadcrumb, Button, showToast } from "../ui";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useNotificationStore } from "../../stores/useNotificationStore";
+import { getSocket } from "../../lib/socketClient";
+import api from "../../lib/api";
 
 const navByRole: Record<string, { label: string; path: string }[]> = {
   admin: [
@@ -13,6 +16,7 @@ const navByRole: Record<string, { label: string; path: string }[]> = {
     { label: "Maintenance", path: "/maintenance" },
     { label: "Audits", path: "/audits" },
     { label: "Reports", path: "/reports" },
+    { label: "Activity Log", path: "/activity-log" },
     { label: "Notifications", path: "/notifications" },
   ],
   manager: [
@@ -22,6 +26,7 @@ const navByRole: Record<string, { label: string; path: string }[]> = {
     { label: "Bookings", path: "/bookings" },
     { label: "Maintenance", path: "/maintenance" },
     { label: "Reports", path: "/reports" },
+    { label: "Activity Log", path: "/activity-log" },
     { label: "Notifications", path: "/notifications" },
   ],
   employee: [
@@ -42,6 +47,7 @@ const labelMap: Record<string, string> = {
   "/audits": "Audits",
   "/reports": "Reports",
   "/notifications": "Notifications",
+  "/activity-log": "Activity Log",
 };
 
 export function AppLayout() {
@@ -50,6 +56,41 @@ export function AppLayout() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const unread = useNotificationStore((s) => s.unread);
+
+  const { setItems, setUnread, addNotification } = useNotificationStore();
+
+  useEffect(() => {
+    const poll = setInterval(async () => {
+      try {
+        const { data } = await api.get("/notifications");
+        setItems(data.data);
+        setUnread(data.data.filter((n: { isRead: boolean }) => !n.isRead).length);
+      } catch { /* */ }
+    }, 30000);
+    return () => clearInterval(poll);
+  }, [setItems, setUnread]);
+
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const handler = (n: { id: number; title: string; message: string; type: string; link?: string; createdAt: string }) => {
+      addNotification({ ...n, isRead: false, link: n.link ?? null });
+      showToast(n.title, "info");
+    };
+
+    const backfill = async () => {
+      try {
+        const { data } = await api.get("/notifications");
+        setItems(data.data);
+        setUnread(data.data.filter((n: { isRead: boolean }) => !n.isRead).length);
+      } catch { /* */ }
+    };
+
+    socket.on("notification:new", handler);
+    socket.on("connect", backfill);
+    return () => { socket.off("notification:new", handler); socket.off("connect", backfill); };
+  }, [addNotification, setItems, setUnread]);
 
   const role = user?.role ?? "employee";
   const items = (navByRole[role] ?? navByRole.employee).map((n) => ({

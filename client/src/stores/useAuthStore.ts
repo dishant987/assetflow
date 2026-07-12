@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import api from "../lib/api";
+import { connectSocket, disconnectSocket } from "../lib/socketClient";
 
 export type User = {
   id: number;
@@ -37,8 +38,10 @@ export const useAuthStore = create<State & Actions>()(
       login: async (email, password) => {
         const { data } = await api.post("/auth/login", { email, password });
         set({ user: data.data.user, accessToken: data.data.accessToken });
+        connectSocket(data.data.accessToken);
       },
       logout: async () => {
+        disconnectSocket();
         set({ user: null, accessToken: null });
         try { await api.post("/auth/logout"); } catch { /* ignore */ }
       },

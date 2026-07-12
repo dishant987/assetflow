@@ -2,9 +2,10 @@ import { db } from "../config/db";
 import { maintenanceRequests } from "../models/maintenanceRequests";
 import { assets } from "../models/assets";
 import { employees } from "../models/employees";
-import { notifications } from "../models/notifications";
 import { AppError } from "../utils/AppError";
 import { eq, sql } from "drizzle-orm";
+import * as notificationService from "./notificationService";
+import * as activityLog from "./activityLogService";
 
 export async function list() {
   return db
@@ -73,7 +74,7 @@ export async function create(data: {
     priority: (data.priority ?? "medium") as never,
   }).returning();
 
-  await db.insert(notifications).values({
+  await notificationService.create({
     employeeId: data.requestedBy,
     title: "Maintenance Request Created",
     message: `Your maintenance request has been submitted.`,
@@ -81,11 +82,36 @@ export async function create(data: {
     link: `/maintenance/${req.id}`,
   });
 
+  await activityLog.log({
+    employeeId: data.requestedBy,
+    action: "maintenance_created",
+    entityType: "maintenance",
+    entityId: req.id,
+    details: { assetId: data.assetId },
+  });
+
   return req;
 }
 
+const validTransitions: Record<string, string[]> = {
+  reported: ["approved", "cancelled"],
+  approved: ["in_progress", "cancelled"],
+  in_progress: ["completed", "cancelled"],
+  completed: [],
+  cancelled: [],
+};
+
 export async function updateStatus(id: number, status: string, assignedTo?: number) {
   const existing = await getById(id);
+
+  const allowed = validTransitions[existing.status] ?? [];
+  if (!allowed.includes(status)) {
+    throw new AppError(
+      "INVALID_STATE_TRANSITION",
+      `Cannot transition from "${existing.status}" to "${status}". Allowed: ${allowed.join(", ") || "none"}.`,
+      400,
+    );
+  }
 
   const updateData: Record<string, unknown> = { status };
 
@@ -108,5 +134,21 @@ export async function updateStatus(id: number, status: string, assignedTo?: numb
     .set(updateData)
     .where(eq(maintenanceRequests.id, id))
     .returning();
+
+  await notificationService.create({
+    employeeId: existing.requestedBy,
+    title: `Maintenance ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+    message: `Maintenance request #${id} has been ${status}.`,
+    type: "maintenance",
+    link: `/maintenance/${id}`,
+  });
+
+  await activityLog.log({
+    employeeId: assignedTo ?? existing.requestedBy,
+    action: `maintenance_${status}`,
+    entityType: "maintenance",
+    entityId: id,
+  });
+
   return updated;
 }

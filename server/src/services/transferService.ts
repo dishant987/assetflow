@@ -4,9 +4,10 @@ import { allocations } from "../models/allocations";
 import { assets } from "../models/assets";
 import { employees } from "../models/employees";
 import { departments } from "../models/departments";
-import { notifications } from "../models/notifications";
 import { AppError } from "../utils/AppError";
 import { eq, and, isNull, sql } from "drizzle-orm";
+import * as notificationService from "./notificationService";
+import * as activityLog from "./activityLogService";
 
 export async function list() {
   return db
@@ -38,6 +39,15 @@ export async function create(data: {
   notes?: string;
 }) {
   const [req] = await db.insert(transferRequests).values(data).returning();
+
+  await notificationService.create({
+    employeeId: data.toEmployeeId,
+    title: "Transfer Requested",
+    message: "A transfer request has been created for you.",
+    type: "transfer",
+    link: `/allocations`,
+  });
+
   return req;
 }
 
@@ -69,11 +79,18 @@ export async function approve(id: number, approvedBy: number) {
     .where(eq(transferRequests.id, id))
     .returning();
 
-  await db.insert(notifications).values({
+  await notificationService.create({
     employeeId: req.toEmployeeId!,
     title: "Transfer Approved",
     message: "Asset transfer has been approved.",
     type: "transfer",
+  });
+
+  await activityLog.log({
+    employeeId: approvedBy,
+    action: "transfer_approved",
+    entityType: "transfer",
+    entityId: id,
   });
 
   return updated;

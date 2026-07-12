@@ -2,9 +2,10 @@ import { db } from "../config/db";
 import { bookings } from "../models/bookings";
 import { assets } from "../models/assets";
 import { employees } from "../models/employees";
-import { notifications } from "../models/notifications";
 import { AppError } from "../utils/AppError";
 import { eq, and, sql, gte, lte } from "drizzle-orm";
+import * as notificationService from "./notificationService";
+import * as activityLog from "./activityLogService";
 
 export async function list() {
   return db
@@ -106,12 +107,20 @@ export async function create(data: {
     })
     .returning();
 
-  await db.insert(notifications).values({
+  await notificationService.create({
     employeeId: data.bookedBy,
     title: "Booking Created",
     message: `Your booking has been created.`,
     type: "booking",
     link: `/bookings/${booking.id}`,
+  });
+
+  await activityLog.log({
+    employeeId: data.bookedBy,
+    action: "booking_created",
+    entityType: "booking",
+    entityId: booking.id,
+    details: { assetId: data.assetId },
   });
 
   return booking;
@@ -130,6 +139,20 @@ export async function cancel(id: number) {
     .set({ status: "cancelled" })
     .where(eq(bookings.id, id))
     .returning();
+
+  await notificationService.create({
+    employeeId: row.bookedBy,
+    title: "Booking Cancelled",
+    message: `Booking #${id} has been cancelled.`,
+    type: "booking",
+  });
+
+  await activityLog.log({
+    action: "booking_cancelled",
+    entityType: "booking",
+    entityId: id,
+  });
+
   return updated;
 }
 
@@ -146,6 +169,29 @@ export async function approve(id: number) {
     .set({ status: "approved" })
     .where(eq(bookings.id, id))
     .returning();
+
+  await notificationService.create({
+    employeeId: row.bookedBy,
+    title: "Booking Confirmed",
+    message: `Booking #${id} has been approved.`,
+    type: "booking",
+    link: `/bookings/${id}`,
+  });
+
+  await notificationService.create({
+    employeeId: row.bookedBy,
+    title: "Booking Reminder",
+    message: `Your booking #${id} is scheduled from ${row.slotStart.toISOString()} to ${row.slotEnd.toISOString()}.`,
+    type: "booking_reminder",
+    link: `/bookings/${id}`,
+  });
+
+  await activityLog.log({
+    action: "booking_approved",
+    entityType: "booking",
+    entityId: id,
+  });
+
   return updated;
 }
 
@@ -166,5 +212,13 @@ export async function reschedule(id: number, slotStart: string, slotEnd: string)
     .set({ slotStart: new Date(slotStart), slotEnd: new Date(slotEnd) })
     .where(eq(bookings.id, id))
     .returning();
+
+  await notificationService.create({
+    employeeId: row.bookedBy,
+    title: "Booking Rescheduled",
+    message: `Booking #${id} has been rescheduled.`,
+    type: "booking",
+  });
+
   return updated;
 }

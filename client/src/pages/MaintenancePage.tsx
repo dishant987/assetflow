@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Button, Input, Select, Table, Card, StatusBadge, Badge, Modal, showToast } from "../components/ui";
+import { Button, Input, Select, Table, Card, StatusBadge, Badge, Modal, showToast, PageLoader, EmptyState } from "../components/ui";
 import type { Column } from "../components/ui";
 import api from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
@@ -31,11 +31,14 @@ const statusFlow: Record<string, string[]> = {
 
 export default function MaintenancePage() {
   const [items, setItems] = useState<Maint[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showRaise, setShowRaise] = useState(false);
   const user = useAuthStore((s) => s.user);
 
   const fetchItems = useCallback(async () => {
+    setLoading(true);
     try { const { data } = await api.get("/maintenance"); setItems(data.data); } catch { }
+    finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
@@ -70,7 +73,7 @@ export default function MaintenancePage() {
       </div>
 
       <Card>
-        <Table columns={cols} data={items} />
+        {loading ? <PageLoader /> : items.length === 0 ? <EmptyState title="No maintenance requests" description="Raise a request to report an issue." /> : <Table columns={cols} data={items} />}
       </Card>
 
       {showRaise && <RaiseModal onClose={() => setShowRaise(false)} onDone={() => { setShowRaise(false); fetchItems(); }} />}

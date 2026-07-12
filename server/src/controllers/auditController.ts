@@ -40,3 +40,8 @@ export async function updateItemVerdict(req: Request, res: Response) {
   const data = await service.updateItemVerdict(Number(req.params.itemId), req.body);
   res.json({ data });
 }
+
+export async function discrepancyReport(req: Request, res: Response) {
+  const data = await service.discrepancyReport(Number(req.params.id));
+  res.json({ data });
+}

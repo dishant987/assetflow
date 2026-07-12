@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Input, Select, Table, Card, StatusBadge, showToast, Modal } from "../components/ui";
+import { Button, Input, Select, Table, Card, StatusBadge, showToast, Modal, PageLoader, EmptyState } from "../components/ui";
 import type { Column } from "../components/ui";
 import api from "../lib/api";
 
@@ -28,6 +28,7 @@ type Category = { id: number; name: string; code: string };
 export default function AssetsPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -35,6 +36,7 @@ export default function AssetsPage() {
   const nav = useNavigate();
 
   const fetchAssets = useCallback(async () => {
+    setLoading(true);
     try {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
@@ -43,6 +45,7 @@ export default function AssetsPage() {
       const { data } = await api.get(`/assets?${params}`);
       setAssets(data.data);
     } catch { /* toast handled by interceptor */ }
+    finally { setLoading(false); }
   }, [search, statusFilter, categoryFilter]);
 
   useEffect(() => { fetchCategories(); }, []);
@@ -77,7 +80,7 @@ export default function AssetsPage() {
       </div>
 
       <Card>
-        <Table columns={columns} data={assets} />
+        {loading ? <PageLoader /> : assets.length === 0 ? <EmptyState title="No assets yet" description="Register your first asset to get started." /> : <Table columns={columns} data={assets} />}
       </Card>
 
       <div className="flex" style={{ justifyContent: "flex-end" }}>

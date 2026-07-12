@@ -1,4 +1,3 @@
-import path from "path";
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -9,11 +8,10 @@ import { globalLimiter } from "./middleware/rateLimiters";
 
 const app = express();
 
-app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
+const allowedOrigins = env.CORS_ORIGINS.split(",").map((s: string) => s.trim());
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
-app.use("/uploads", express.static(path.resolve(__dirname, "../uploads")));
-
 app.use("/api", globalLimiter);
 
 app.use("/api", routes);
