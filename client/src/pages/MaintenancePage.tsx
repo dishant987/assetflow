@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button, Input, Select, Table, Card, StatusBadge, Badge, Modal, showToast, PageLoader, EmptyState } from "../components/ui";
 import type { Column } from "../components/ui";
 import api from "../lib/api";
@@ -34,6 +35,15 @@ export default function MaintenancePage() {
   const [loading, setLoading] = useState(true);
   const [showRaise, setShowRaise] = useState(false);
   const user = useAuthStore((s) => s.user);
+  const nav = useNavigate();
+  const loc = useLocation();
+
+  useEffect(() => {
+    if (new URLSearchParams(loc.search).get("raise") === "true") {
+      setShowRaise(true);
+      nav(loc.pathname, { replace: true });
+    }
+  }, [loc.search, nav, loc.pathname]);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);

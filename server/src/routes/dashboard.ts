@@ -9,5 +9,6 @@ router.use(authGuard);
 router.get("/kpi", asyncHandler(ctrl.kpi));
 router.get("/upcoming-returns", asyncHandler(ctrl.upcomingReturns));
 router.get("/overdue-returns", asyncHandler(ctrl.overdueReturns));
+router.get("/recent-activity", asyncHandler(ctrl.recentActivity));
 
 export default router;

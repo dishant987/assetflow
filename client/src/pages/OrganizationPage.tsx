@@ -138,13 +138,38 @@ export default function OrganizationPage() {
 
   return (
     <div className="flex flex-col gap-lg">
+      <div className="flex" style={{ justifyContent: "space-between", alignItems: "center" }}>
+        <h2 style={{ fontSize: 22, fontWeight: 700 }}>Organization</h2>
+      </div>
+
       <div className="flex gap-sm" style={{ alignItems: "center", flexWrap: "wrap", justifyContent: "space-between" }}>
-        <div className="flex gap-sm">
-          <Button variant={tab === "departments" ? "primary" : "ghost"} size="sm" onClick={() => { setTab("departments"); setPage(1); setSearchQuery(""); setDebouncedSearch(""); }}>Departments</Button>
-          <Button variant={tab === "categories" ? "primary" : "ghost"} size="sm" onClick={() => { setTab("categories"); setPage(1); setSearchQuery(""); setDebouncedSearch(""); }}>Asset Categories</Button>
-          <Button variant={tab === "employees" ? "primary" : "ghost"} size="sm" onClick={() => { setTab("employees"); setPage(1); setSearchQuery(""); setDebouncedSearch(""); }}>Employee Directory</Button>
+        <div className="flex gap-xs" style={{ background: "var(--color-bg, #F3F4F6)", padding: 4, borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)" }}>
+          <Button
+            variant={tab === "departments" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => { setTab("departments"); setPage(1); setSearchQuery(""); setDebouncedSearch(""); }}
+            style={tab === "departments" ? { background: "#fff", color: "var(--color-primary)", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", fontWeight: 600 } : { color: "var(--color-text-secondary)" }}
+          >
+            Departments
+          </Button>
+          <Button
+            variant={tab === "categories" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => { setTab("categories"); setPage(1); setSearchQuery(""); setDebouncedSearch(""); }}
+            style={tab === "categories" ? { background: "#fff", color: "var(--color-primary)", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", fontWeight: 600 } : { color: "var(--color-text-secondary)" }}
+          >
+            Asset Categories
+          </Button>
+          <Button
+            variant={tab === "employees" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => { setTab("employees"); setPage(1); setSearchQuery(""); setDebouncedSearch(""); }}
+            style={tab === "employees" ? { background: "#fff", color: "var(--color-primary)", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", fontWeight: 600 } : { color: "var(--color-text-secondary)" }}
+          >
+            Employee Directory
+          </Button>
         </div>
-        <div style={{ display: "flex", gap: "12px", alignItems: "center", flex: 1, justifyContent: "flex-end", minWidth: "280px" }}>
+        <div style={{ display: "flex", gap: "12px", alignItems: "center", minWidth: "280px" }}>
           <div style={{ width: "220px" }}>
             <Input
               placeholder={`Search ${tab}...`}
@@ -296,9 +321,10 @@ function DeptModal({ edit, onClose, onDone, departments, employees }: { edit: De
         <Input label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
         <Select label="Head" value={form.headEmployeeId} onChange={(e) => setForm({ ...form, headEmployeeId: e.target.value })} placeholder="— Select —" options={employees.map((e) => ({ value: String(e.id), label: `${e.firstName} ${e.lastName}` }))} />
         <Select label="Parent Department" value={form.parentId} onChange={(e) => setForm({ ...form, parentId: e.target.value })} placeholder="— None —" options={departments.filter((d) => d.id !== edit?.id).map((d) => ({ value: String(d.id), label: d.name }))} />
-        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, cursor: "pointer" }}>
-          <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} /> Active
-        </label>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: "var(--color-bg, #F9FAFB)", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", width: "fit-content" }}>
+          <input type="checkbox" id="isActive" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} style={{ cursor: "pointer" }} />
+          <label htmlFor="isActive" style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text-secondary)", cursor: "pointer", userSelect: "none" }}>Active Status</label>
+        </div>
         <div className="modal-footer" style={{ padding: 0, border: "none" }}>
           <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={saving}>{edit ? "Update" : "Create"}</Button>

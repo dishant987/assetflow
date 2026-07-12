@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Button, Input, Table, Card, StatusBadge, Modal, showToast, PageLoader, EmptyState } from "../components/ui";
+import { Button, Input, Table, Card, StatusBadge, Modal, showToast, PageLoader, EmptyState, Select } from "../components/ui";
 import type { Column } from "../components/ui";
 import api from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
@@ -24,6 +24,8 @@ type TransferReq = { id: string; assetId: string; assetTag: string; fromEmployee
 export default function AllocationsPage() {
   const [allocations, setAllocations] = useState<Allocation[]>([]);
   const [transfers, setTransfers] = useState<TransferReq[]>([]);
+  const [employees, setEmployees] = useState<{ id: string; firstName: string; lastName: string; employeeCode: string; role: string }[]>([]);
+  const [assetsList, setAssetsList] = useState<{ id: string; name: string; assetTag: string; status: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAllocate, setShowAllocate] = useState(false);
   const [showReturn, setShowReturn] = useState<Allocation | null>(null);
@@ -34,11 +36,26 @@ export default function AllocationsPage() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [a, t] = await Promise.all([api.get("/allocations"), api.get("/transfers")]);
+      const a = await api.get("/allocations");
       setAllocations(a.data.data);
+    } catch (err) { console.error("Failed to load allocations", err); }
+
+    try {
+      const t = await api.get("/transfers");
       setTransfers(t.data.data);
-    } catch { /* */ }
-    finally { setLoading(false); }
+    } catch (err) { console.error("Failed to load transfers", err); }
+
+    try {
+      const e = await api.get("/employees");
+      setEmployees(e.data.data);
+    } catch (err) { console.error("Failed to load employees", err); }
+
+    try {
+      const ast = await api.get("/assets");
+      setAssetsList(ast.data.data);
+    } catch (err) { console.error("Failed to load assets", err); }
+
+    setLoading(false);
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
@@ -97,14 +114,41 @@ export default function AllocationsPage() {
         )}
       </Card>
 
-      {showAllocate && <AllocateModal onClose={() => setShowAllocate(false)} onDone={() => { setShowAllocate(false); fetchAll(); }} onTransfer={(tag, allocId) => { setShowAllocate(false); setShowTransfer({ assetTag: tag, allocationId: allocId }); }} />}
+      {showAllocate && (
+        <AllocateModal
+          employees={employees}
+          assetsList={assetsList}
+          onClose={() => setShowAllocate(false)}
+          onDone={() => { setShowAllocate(false); fetchAll(); }}
+          onTransfer={(tag, allocId) => { setShowAllocate(false); setShowTransfer({ assetTag: tag, allocationId: allocId }); }}
+        />
+      )}
       {showReturn && <ReturnModal allocation={showReturn} onClose={() => setShowReturn(null)} onDone={() => { setShowReturn(null); fetchAll(); }} />}
-      {showTransfer && <TransferModal {...showTransfer} onClose={() => setShowTransfer(null)} onDone={() => { setShowTransfer(null); fetchAll(); }} />}
+      {showTransfer && (
+        <TransferModal
+          {...showTransfer}
+          employees={employees}
+          onClose={() => setShowTransfer(null)}
+          onDone={() => { setShowTransfer(null); fetchAll(); }}
+        />
+      )}
     </div>
   );
 }
 
-function AllocateModal({ onClose, onDone, onTransfer }: { onClose: () => void; onDone: () => void; onTransfer?: (tag: string, allocId: string) => void }) {
+function AllocateModal({
+  employees,
+  assetsList,
+  onClose,
+  onDone,
+  onTransfer
+}: {
+  employees: { id: string; firstName: string; lastName: string; employeeCode: string; role: string }[];
+  assetsList: { id: string; name: string; assetTag: string; status: string }[];
+  onClose: () => void;
+  onDone: () => void;
+  onTransfer?: (tag: string, allocId: string) => void;
+}) {
   const [form, setForm] = useState({ assetTag: "", employeeId: "", notes: "", expectedReturnAt: "" });
   const [saving, setSaving] = useState(false);
   const [conflict, setConflict] = useState<{ msg: string; allocationId: string } | null>(null);
@@ -140,8 +184,30 @@ function AllocateModal({ onClose, onDone, onTransfer }: { onClose: () => void; o
         </div>
       ) : (
         <form onSubmit={handleAllocate} className="flex flex-col gap-md">
-          <Input label="Asset Tag" value={form.assetTag} onChange={(e) => setForm({ ...form, assetTag: e.target.value })} required placeholder="e.g. AF-0114" />
-          <Input label="Employee ID" value={form.employeeId} onChange={(e) => setForm({ ...form, employeeId: e.target.value })} required />
+          <Select
+            label="Asset"
+            value={form.assetTag}
+            onChange={(e) => setForm({ ...form, assetTag: e.target.value })}
+            required
+            placeholder="Select Asset..."
+            options={assetsList
+              .filter((a) => a.status === "available")
+              .map((asset) => ({
+                value: asset.assetTag,
+                label: `${asset.name} (${asset.assetTag})`
+              }))}
+          />
+          <Select
+            label="Employee"
+            value={form.employeeId}
+            onChange={(e) => setForm({ ...form, employeeId: e.target.value })}
+            required
+            placeholder="Select Employee..."
+            options={employees.filter((e) => e.role !== "admin").map((emp) => ({
+              value: emp.id,
+              label: `${emp.firstName} ${emp.lastName} (${emp.employeeCode})`
+            }))}
+          />
           <Input label="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           <Input label="Expected Return" type="date" value={form.expectedReturnAt} onChange={(e) => setForm({ ...form, expectedReturnAt: e.target.value })} />
           <div className="modal-footer" style={{ padding: 0, border: "none" }}>
@@ -175,7 +241,7 @@ function ReturnModal({ allocation, onClose, onDone }: { allocation: Allocation; 
   );
 }
 
-function TransferModal({ assetTag, onClose, onDone }: { assetTag: string; allocationId: string; onClose: () => void; onDone: () => void }) {
+function TransferModal({ assetTag, employees, onClose, onDone }: { assetTag: string; allocationId: string; employees: { id: string; firstName: string; lastName: string; employeeCode: string; role: string }[]; onClose: () => void; onDone: () => void }) {
   const [form, setForm] = useState({ toEmployeeId: "", notes: "" });
   const [saving, setSaving] = useState(false);
 
@@ -196,7 +262,17 @@ function TransferModal({ assetTag, onClose, onDone }: { assetTag: string; alloca
   return (
     <Modal open onClose={onClose} title={`Transfer ${assetTag}`}>
       <form onSubmit={handleTransfer} className="flex flex-col gap-md">
-        <Input label="To Employee ID" value={form.toEmployeeId} onChange={(e) => setForm({ ...form, toEmployeeId: e.target.value })} required />
+        <Select
+          label="To Employee"
+          value={form.toEmployeeId}
+          onChange={(e) => setForm({ ...form, toEmployeeId: e.target.value })}
+          required
+          placeholder="Select Employee..."
+          options={employees.filter((e) => e.role !== "admin").map((emp) => ({
+            value: emp.id,
+            label: `${emp.firstName} ${emp.lastName} (${emp.employeeCode})`
+          }))}
+        />
         <Input label="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
         <div className="modal-footer" style={{ padding: 0, border: "none" }}>
           <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>

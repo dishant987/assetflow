@@ -16,3 +16,8 @@ export async function overdueReturns(_req: Request, res: Response) {
   const data = await service.overdueReturns();
   res.json({ data });
 }
+
+export async function recentActivity(_req: Request, res: Response) {
+  const data = await service.recentActivity();
+  res.json({ data });
+}

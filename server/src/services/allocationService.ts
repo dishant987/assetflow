@@ -58,7 +58,7 @@ export async function getById(id: string) {
   return row;
 }
 
-export async function create(data: { assetId: string; employeeId: string; departmentId?: string; notes?: string }) {
+export async function create(data: { assetId: string; employeeId: string; departmentId?: string; notes?: string; expectedReturnAt?: string }) {
   // Check asset exists and is available
   const [asset] = await db.select().from(assets).where(eq(assets.id, data.assetId)).limit(1);
   if (!asset) throw new AppError("NOT_FOUND", "Asset not found.", 404);
@@ -84,7 +84,7 @@ export async function create(data: { assetId: string; employeeId: string; depart
     );
   }
 
-  const [alloc] = await db.insert(allocations).values(data).returning();
+  const [alloc] = await db.insert(allocations).values({ ...data, expectedReturnAt: data.expectedReturnAt ? new Date(data.expectedReturnAt) : undefined }).returning();
 
   // Update asset status
   await db.update(assets).set({ status: "allocated" }).where(eq(assets.id, data.assetId));

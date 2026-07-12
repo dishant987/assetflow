@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { enUS } from "date-fns/locale";
@@ -26,6 +27,15 @@ export default function BookingsPage() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Booking | null>(null);
+  const nav = useNavigate();
+  const loc = useLocation();
+
+  useEffect(() => {
+    if (new URLSearchParams(loc.search).get("book") === "true") {
+      setShowCreate(true);
+      nav(loc.pathname, { replace: true });
+    }
+  }, [loc.search, nav, loc.pathname]);
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);

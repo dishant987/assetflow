@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button, Input, Select, Table, Card, StatusBadge, showToast, Modal, PageLoader, EmptyState } from "../components/ui";
 import type { Column } from "../components/ui";
 import api from "../lib/api";
@@ -34,6 +34,14 @@ export default function AssetsPage() {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [showRegister, setShowRegister] = useState(false);
   const nav = useNavigate();
+  const loc = useLocation();
+
+  useEffect(() => {
+    if (new URLSearchParams(loc.search).get("register") === "true") {
+      setShowRegister(true);
+      nav(loc.pathname, { replace: true });
+    }
+  }, [loc.search, nav, loc.pathname]);
 
   const fetchAssets = useCallback(async () => {
     setLoading(true);
