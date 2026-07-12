@@ -91,7 +91,7 @@ export async function list(opts: { search?: string; categoryId?: string; status?
     .leftJoin(assetCategories, eq(assets.categoryId, assetCategories.id));
 
   if (opts?.role === "department_head" && departmentId) {
-      const departmentIdValue = departmentId;
+      const departmentIdValue = departmentId as string;
       return baseQuery
       .leftJoin(allocations, and(eq(assets.id, allocations.assetId), eq(allocations.status, "active")))
       .leftJoin(employees, eq(allocations.employeeId, employees.id))
@@ -122,6 +122,8 @@ export async function getById(id: string, opts?: { role?: string; userId?: strin
   if (opts?.role === "department_head" && opts?.userId) {
     const [emp] = await db.select({ departmentId: employees.departmentId }).from(employees).where(eq(employees.id, opts.userId)).limit(1);
     const departmentId = emp?.departmentId ?? null;
+    if (!departmentId) throw new AppError("FORBIDDEN", "You do not belong to any department.", 403);
+    const departmentIdValue = departmentId as string;
     const [row] = await db
       .select({
         id: assets.id,
@@ -155,8 +157,8 @@ export async function getById(id: string, opts?: { role?: string; userId?: strin
           eq(assets.id, id),
           eq(allocations.status, "active"),
           or(
-            eq(allocations.departmentId, departmentId),
-            eq(employees.departmentId, departmentId),
+            eq(allocations.departmentId, departmentIdValue),
+            eq(employees.departmentId, departmentIdValue),
           ),
         ),
       )
