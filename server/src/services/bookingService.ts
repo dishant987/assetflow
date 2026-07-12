@@ -126,13 +126,17 @@ export async function create(data: {
   return booking;
 }
 
-export async function cancel(id: string) {
+export async function cancel(id: string, userId?: string, userRole?: string) {
   const [row] = await db
     .select()
     .from(bookings)
     .where(eq(bookings.id, id))
     .limit(1);
   if (!row) throw new AppError("NOT_FOUND", "Booking not found.", 404);
+
+  if (userId && userRole && userRole !== "admin" && userRole !== "manager" && row.bookedBy !== userId) {
+    throw new AppError("ROLE_NOT_ALLOWED", "You don't have permission to cancel this booking.", 403);
+  }
 
   const [updated] = await db
     .update(bookings)
@@ -195,13 +199,17 @@ export async function approve(id: string) {
   return updated;
 }
 
-export async function reschedule(id: string, slotStart: string, slotEnd: string) {
+export async function reschedule(id: string, slotStart: string, slotEnd: string, userId?: string, userRole?: string) {
   const [row] = await db
     .select()
     .from(bookings)
     .where(eq(bookings.id, id))
     .limit(1);
   if (!row) throw new AppError("NOT_FOUND", "Booking not found.", 404);
+
+  if (userId && userRole && userRole !== "admin" && userRole !== "manager" && row.bookedBy !== userId) {
+    throw new AppError("ROLE_NOT_ALLOWED", "You don't have permission to reschedule this booking.", 403);
+  }
 
   const start = new Date(slotStart);
   const end = new Date(slotEnd);

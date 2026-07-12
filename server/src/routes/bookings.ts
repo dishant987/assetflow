@@ -4,6 +4,7 @@ import * as ctrl from "../controllers/bookingController";
 import { validate } from "../middleware/validate";
 import { asyncHandler } from "../utils/asyncHandler";
 import { authGuard } from "../middleware/authGuard";
+import { roleGuard } from "../middleware/roleGuard";
 
 const router = Router();
 
@@ -25,7 +26,7 @@ router.get("/", asyncHandler(ctrl.list));
 router.get("/:id", asyncHandler(ctrl.getById));
 router.post("/", validate(createSchema), asyncHandler(ctrl.create));
 router.post("/:id/cancel", asyncHandler(ctrl.cancel));
-router.post("/:id/approve", asyncHandler(ctrl.approve));
+router.post("/:id/approve", roleGuard("admin", "manager"), asyncHandler(ctrl.approve));
 router.patch("/:id/reschedule", validate(rescheduleSchema), asyncHandler(ctrl.reschedule));
 
 export default router;

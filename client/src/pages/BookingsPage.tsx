@@ -4,8 +4,10 @@ import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { enUS } from "date-fns/locale";
 import "react-big-calendar/lib/css/react-big-calendar.css";
-import { Button, Modal, Input, Select, Card, StatusBadge, showToast, PageLoader, EmptyState } from "../components/ui";
+import { Button, Modal, Input, Select, Card, StatusBadge, showToast, PageLoader, EmptyState, Table } from "../components/ui";
+import type { Column } from "../components/ui";
 import api from "../lib/api";
+import { useAuthStore } from "../stores/useAuthStore";
 
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales: { "en-US": enUS } });
 
@@ -27,6 +29,12 @@ export default function BookingsPage() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Booking | null>(null);
+  const [view, setView] = useState<"calendar" | "list">("calendar");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  
   const nav = useNavigate();
   const loc = useLocation();
 
@@ -45,12 +53,15 @@ export default function BookingsPage() {
 
   useEffect(() => { fetchBookings(); }, [fetchBookings]);
 
-  const events = bookings.map((b) => ({
-    title: `${b.assetTag} — ${b.bookerName}${b.purpose ? ` (${b.purpose})` : ""}`,
-    start: new Date(b.slotStart),
-    end: new Date(b.slotEnd),
-    resource: b,
-  }));
+  const events = bookings
+    .filter((b) => b.status !== "cancelled")
+    .map((b) => ({
+      title: `${b.assetTag} — ${b.bookerName}${b.purpose ? ` (${b.purpose})` : ""}`,
+      start: new Date(b.slotStart),
+      end: new Date(b.slotEnd),
+      allDay: false,
+      resource: b,
+    }));
 
   const eventStyleGetter = (event: { resource?: Booking }) => {
     const status = event.resource?.status;
@@ -58,25 +69,156 @@ export default function BookingsPage() {
     return { style: { backgroundColor: color, borderRadius: "4px", color: "#fff", border: "none", fontSize: 13 } };
   };
 
+  const filteredBookings = bookings.filter((b) => {
+    const term = search.toLowerCase();
+    const matchesSearch =
+      b.assetTag.toLowerCase().includes(term) ||
+      b.assetName.toLowerCase().includes(term) ||
+      b.bookerName.toLowerCase().includes(term) ||
+      (b.purpose && b.purpose.toLowerCase().includes(term));
+      
+    const matchesStatus = !statusFilter || b.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const totalItems = filteredBookings.length;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+  const activePage = Math.min(page, Math.max(1, totalPages));
+
+  const startIndex = (activePage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const displayedBookings = filteredBookings.slice(startIndex, endIndex);
+
+  const columns: Column<Booking>[] = [
+    { key: "assetTag", label: "Asset Tag", sortable: true, render: (b) => <strong>{b.assetTag}</strong> },
+    { key: "assetName", label: "Asset Name", sortable: true },
+    { key: "bookerName", label: "Booked By", sortable: true },
+    { key: "purpose", label: "Purpose" },
+    { key: "slotStart", label: "Start Time", render: (b) => new Date(b.slotStart).toLocaleString() },
+    { key: "slotEnd", label: "End Time", render: (b) => new Date(b.slotEnd).toLocaleString() },
+    { key: "status", label: "Status", render: (b) => {
+        const displayStatus = computeDisplayStatus(b.status, b.slotStart, b.slotEnd);
+        return <StatusBadge status={displayStatus} />;
+      }
+    },
+    { key: "actions", label: "", render: (b) => <Button size="sm" variant="ghost" onClick={() => setSelectedEvent(b)}>View</Button> },
+  ];
+
   return (
     <div className="flex flex-col gap-lg">
-      <div className="flex" style={{ justifyContent: "flex-end" }}>
-        <Button onClick={() => setShowCreate(true)}>+ New Booking</Button>
+      <div className="flex gap-sm" style={{ alignItems: "center", flexWrap: "wrap", justifyContent: "space-between" }}>
+        <div className="flex gap-xs" style={{ background: "var(--color-bg, #F3F4F6)", padding: 4, borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)" }}>
+          <Button
+            variant={view === "calendar" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setView("calendar")}
+            style={view === "calendar" ? { background: "#fff", color: "var(--color-primary)", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", fontWeight: 600 } : { color: "var(--color-text-secondary)" }}
+          >
+            Calendar View
+          </Button>
+          <Button
+            variant={view === "list" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setView("list")}
+            style={view === "list" ? { background: "#fff", color: "var(--color-primary)", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", fontWeight: 600 } : { color: "var(--color-text-secondary)" }}
+          >
+            List View
+          </Button>
+        </div>
+
+        <div style={{ display: "flex", gap: "12px", alignItems: "center", minWidth: "280px" }}>
+          {view === "list" && (
+            <>
+              <div style={{ width: "200px" }}>
+                <Input
+                  placeholder="Search bookings..."
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
+                />
+              </div>
+              <div style={{ width: "140px" }}>
+                <Select
+                  options={[
+                    { value: "", label: "All Statuses" },
+                    { value: "pending", label: "Pending" },
+                    { value: "approved", label: "Approved" },
+                    { value: "cancelled", label: "Cancelled" },
+                  ]}
+                  value={statusFilter}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value);
+                    setPage(1);
+                  }}
+                />
+              </div>
+            </>
+          )}
+          <Button onClick={() => setShowCreate(true)}>+ New Booking</Button>
+        </div>
       </div>
 
-      {loading ? <PageLoader /> : bookings.length === 0 ? <EmptyState title="No bookings yet" description="Create a booking to reserve an asset." /> : <Card style={{ padding: 16 }}>
-        <Calendar
-          localizer={localizer}
-          events={events}
-          startAccessor="start"
-          endAccessor="end"
-          style={{ height: 500 }}
-          onSelectEvent={(e) => setSelectedEvent(e.resource as Booking)}
-          eventPropGetter={eventStyleGetter}
-          views={["month", "week", "day"]}
-          defaultView="week"
-        />
-      </Card>}
+      {loading ? (
+        <PageLoader />
+      ) : bookings.length === 0 ? (
+        <EmptyState title="No bookings yet" description="Create a booking to reserve an asset." />
+      ) : view === "calendar" ? (
+        <Card style={{ padding: 16 }}>
+          <Calendar
+            localizer={localizer}
+            events={events}
+            startAccessor="start"
+            endAccessor="end"
+            style={{ height: 600 }}
+            onSelectEvent={(e) => setSelectedEvent(e.resource as Booking)}
+            eventPropGetter={eventStyleGetter}
+            views={["month", "week", "day"]}
+            defaultView="week"
+            showMultiDayTimes={true}
+          />
+        </Card>
+      ) : (
+        <>
+          <Card>
+            {displayedBookings.length === 0 ? (
+              <EmptyState title="No bookings found" description="Try adjusting your filters or search query." />
+            ) : (
+              <Table columns={columns} data={displayedBookings as any} />
+            )}
+          </Card>
+
+          {totalPages > 1 && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, padding: "0 8px" }}>
+              <span style={{ fontSize: 13, color: "var(--color-text-secondary)" }}>
+                Showing {Math.min(startIndex + 1, totalItems)} to {Math.min(endIndex, totalItems)} of {totalItems} entries
+              </span>
+              <div className="flex gap-sm" style={{ alignItems: "center" }}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={activePage === 1}
+                  onClick={() => setPage(activePage - 1)}
+                >
+                  Previous
+                </Button>
+                <span style={{ fontSize: 13, fontWeight: 500, padding: "0 8px" }}>
+                  Page {activePage} of {totalPages}
+                </span>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={activePage === totalPages}
+                  onClick={() => setPage(activePage + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       {showCreate && <CreateBookingModal onClose={() => setShowCreate(false)} onDone={() => { setShowCreate(false); fetchBookings(); }} />}
       {selectedEvent && <BookingDetailModal booking={selectedEvent} onClose={() => setSelectedEvent(null)} onDone={() => { setSelectedEvent(null); fetchBookings(); }} />}
@@ -143,11 +285,14 @@ function computeDisplayStatus(s: string, start: string, end: string): string {
 }
 
 function BookingDetailModal({ booking, onClose, onDone }: { booking: Booking; onClose: () => void; onDone: () => void }) {
+  const user = useAuthStore((s) => s.user);
   const [saving, setSaving] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
   const [rsForm, setRsForm] = useState({ slotStart: "", slotEnd: "" });
 
   const displayStatus = computeDisplayStatus(booking.status, booking.slotStart, booking.slotEnd);
+
+  const canManage = user?.role === "admin" || user?.role === "manager" || booking.bookedBy === user?.userId;
 
   const handleCancel = async () => {
     setSaving(true);
@@ -188,9 +333,15 @@ function BookingDetailModal({ booking, onClose, onDone }: { booking: Booking; on
             <dd><StatusBadge status={displayStatus} /></dd>
           </dl>
           <div className="modal-footer">
-            {booking.status === "pending" && <Button onClick={handleApprove} loading={saving}>Approve</Button>}
-            {booking.status !== "cancelled" && <Button variant="secondary" onClick={() => { setRescheduling(true); setRsForm({ slotStart: booking.slotStart.slice(0, 16), slotEnd: booking.slotEnd.slice(0, 16) }); }}>Reschedule</Button>}
-            {booking.status !== "cancelled" && <Button variant="secondary" onClick={handleCancel} loading={saving}>Cancel Booking</Button>}
+            {booking.status === "pending" && (user?.role === "admin" || user?.role === "manager") && (
+              <Button onClick={handleApprove} loading={saving}>Approve</Button>
+            )}
+            {booking.status !== "cancelled" && canManage && (
+              <Button variant="secondary" onClick={() => { setRescheduling(true); setRsForm({ slotStart: booking.slotStart.slice(0, 16), slotEnd: booking.slotEnd.slice(0, 16) }); }}>Reschedule</Button>
+            )}
+            {booking.status !== "cancelled" && canManage && (
+              <Button variant="secondary" onClick={handleCancel} loading={saving}>Cancel Booking</Button>
+            )}
             <Button variant="ghost" onClick={onClose}>Close</Button>
           </div>
         </>

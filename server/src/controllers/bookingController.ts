@@ -17,7 +17,7 @@ export async function create(req: Request, res: Response) {
 }
 
 export async function cancel(req: Request, res: Response) {
-  const data = await service.cancel(req.params.id);
+  const data = await service.cancel(req.params.id, req.user!.userId, req.user!.role);
   res.json({ data });
 }
 
@@ -27,6 +27,12 @@ export async function approve(req: Request, res: Response) {
 }
 
 export async function reschedule(req: Request, res: Response) {
-  const data = await service.reschedule(req.params.id, req.body.slotStart, req.body.slotEnd);
+  const data = await service.reschedule(
+    req.params.id,
+    req.body.slotStart,
+    req.body.slotEnd,
+    req.user!.userId,
+    req.user!.role
+  );
   res.json({ data });
 }

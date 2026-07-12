@@ -13,7 +13,15 @@ initSocket(server);
 startJobs();
 
 db.execute(sql`SELECT 1`)
-  .then(() => logger.info("Neon DB connected"))
+  .then(async () => {
+    logger.info("Neon DB connected");
+    try {
+      await db.execute(sql`ALTER TYPE asset_status ADD VALUE IF NOT EXISTS 'damaged'`);
+      logger.info("Ensured 'damaged' is added to asset_status enum type");
+    } catch (e: any) {
+      logger.error("Failed to alter asset_status enum (may already exist or be in transaction): " + e.message);
+    }
+  })
   .catch((e: Error) => logger.error("Neon DB connection failed", e.message));
 
 server.listen(env.PORT, () => {

@@ -51,7 +51,7 @@ export default function AuditDetailPage() {
     try { await api.post(`/audits/${id}${endpoint}`); showToast(msg, "success"); fetchCycle(); } catch { showToast("Failed", "error"); } finally { setSaving(false); }
   };
 
-  const isAdminMgr = role === "admin" || role === "manager";
+  const isAdminMgr = role === "admin" || role === "manager" || role === "department_head";
 
   const cols: Column<AuditItem>[] = [
     { key: "assetTag", label: "Tag", render: (r) => <span style={{ fontFamily: "monospace" }}>{r.assetTag}</span> },
@@ -76,6 +76,7 @@ export default function AuditDetailPage() {
           {cycle && <span style={{ fontSize: 13, color: "var(--color-text-muted)" }}>Status: <StatusBadge status={cycle.status} /></span>}
         </div>
         <div className="flex gap-sm">
+          {cycle?.status === "planned" && isAdminMgr && <Button variant="secondary" onClick={() => action("/populate", "Audit items populated")} loading={saving}>Populate Items</Button>}
           {cycle?.status === "planned" && isAdminMgr && <Button onClick={() => action("/start", "Audit started")} loading={saving}>Start Audit</Button>}
           {cycle?.status === "in_progress" && isAdminMgr && <Button onClick={() => action("/complete", "Audit completed")} loading={saving}>Complete Audit</Button>}
           {!cycle?.status.match(/completed|cancelled/) && isAdminMgr && <Button variant="secondary" onClick={() => action("/cancel", "Audit cancelled")} loading={saving}>Cancel</Button>}

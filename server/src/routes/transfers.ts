@@ -19,7 +19,7 @@ router.use(authGuard);
 
 router.get("/", asyncHandler(ctrl.list));
 router.post("/", validate(createSchema), asyncHandler(ctrl.create));
-router.post("/:id/approve", roleGuard("admin", "manager"), asyncHandler(ctrl.approve));
-router.post("/:id/reject", roleGuard("admin", "manager"), asyncHandler(ctrl.reject));
+router.post("/:id/approve", roleGuard("admin", "manager", "department_head"), asyncHandler(ctrl.approve));
+router.post("/:id/reject", roleGuard("admin", "manager", "department_head"), asyncHandler(ctrl.reject));
 
 export default router;

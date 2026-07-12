@@ -13,10 +13,10 @@ const createSchema = z.object({
   description: z.string().optional(),
   plannedStart: z.string().optional(),
   plannedEnd: z.string().optional(),
-  conductedBy: z.string().uuid().optional().nullable(),
-  scopeDepartmentId: z.string().uuid().optional().nullable(),
+  conductedBy: z.string().optional().nullable(),
+  scopeDepartmentId: z.string().optional().nullable(),
   scopeLocation: z.string().optional().nullable(),
-  auditorIds: z.array(z.string().uuid()).optional().default([]),
+  auditorIds: z.array(z.string()).optional().default([]),
 });
 
 const verdictSchema = z.object({
@@ -27,15 +27,16 @@ const verdictSchema = z.object({
 });
 
 router.use(authGuard);
+router.use(roleGuard("admin", "manager", "department_head"));
 
 router.get("/", asyncHandler(ctrl.listCycles));
 router.get("/:id", asyncHandler(ctrl.getCycleById));
-router.post("/", roleGuard("admin", "manager"), validate(createSchema), asyncHandler(ctrl.createCycle));
-router.post("/:id/populate", roleGuard("admin", "manager"), asyncHandler(ctrl.populateItems));
-router.post("/:id/start", roleGuard("admin", "manager"), asyncHandler(ctrl.startCycle));
-router.post("/:id/complete", roleGuard("admin", "manager"), asyncHandler(ctrl.completeCycle));
-router.post("/:id/cancel", roleGuard("admin", "manager"), asyncHandler(ctrl.cancelCycle));
-router.patch("/items/:itemId/verdict", roleGuard("admin", "manager"), validate(verdictSchema), asyncHandler(ctrl.updateItemVerdict));
-router.get("/:id/discrepancies", roleGuard("admin", "manager"), asyncHandler(ctrl.discrepancyReport));
+router.post("/", validate(createSchema), asyncHandler(ctrl.createCycle));
+router.post("/:id/populate", asyncHandler(ctrl.populateItems));
+router.post("/:id/start", asyncHandler(ctrl.startCycle));
+router.post("/:id/complete", asyncHandler(ctrl.completeCycle));
+router.post("/:id/cancel", asyncHandler(ctrl.cancelCycle));
+router.patch("/items/:itemId/verdict", validate(verdictSchema), asyncHandler(ctrl.updateItemVerdict));
+router.get("/:id/discrepancies", asyncHandler(ctrl.discrepancyReport));
 
 export default router;

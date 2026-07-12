@@ -21,11 +21,10 @@ const returnSchema = z.object({
 });
 
 router.use(authGuard);
-router.use(roleGuard("admin", "manager"));
 
-router.get("/", asyncHandler(ctrl.list));
-router.get("/:id", asyncHandler(ctrl.getById));
-router.post("/", validate(createSchema), asyncHandler(ctrl.create));
-router.post("/:id/return", validate(returnSchema), asyncHandler(ctrl.returnAsset));
+router.get("/", roleGuard("admin", "manager", "department_head"), asyncHandler(ctrl.list));
+router.get("/:id", roleGuard("admin", "manager", "department_head"), asyncHandler(ctrl.getById));
+router.post("/", roleGuard("admin", "manager"), validate(createSchema), asyncHandler(ctrl.create));
+router.post("/:id/return", roleGuard("admin", "manager"), validate(returnSchema), asyncHandler(ctrl.returnAsset));
 
 export default router;

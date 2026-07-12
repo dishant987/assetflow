@@ -1,37 +1,37 @@
 import { Request, Response } from "express";
 import * as service from "../services/reportService";
 
-export async function utilizationTrends(_req: Request, res: Response) {
-  const data = await service.utilizationTrends();
+export async function utilizationTrends(req: Request, res: Response) {
+  const data = await service.utilizationTrends(req.user ? { role: req.user.role, userId: req.user.id } : undefined);
   res.json({ data });
 }
 
-export async function maintenanceFrequency(_req: Request, res: Response) {
-  const data = await service.maintenanceFrequency();
+export async function maintenanceFrequency(req: Request, res: Response) {
+  const data = await service.maintenanceFrequency(20, req.user ? { role: req.user.role, userId: req.user.id } : undefined);
   res.json({ data });
 }
 
-export async function upcomingMaintenance(_req: Request, res: Response) {
-  const data = await service.upcomingMaintenance();
+export async function upcomingMaintenance(req: Request, res: Response) {
+  const data = await service.upcomingMaintenance(50, req.user ? { role: req.user.role, userId: req.user.id } : undefined);
   res.json({ data });
 }
 
-export async function departmentAllocationSummary(_req: Request, res: Response) {
-  const data = await service.departmentAllocationSummary();
+export async function departmentAllocationSummary(req: Request, res: Response) {
+  const data = await service.departmentAllocationSummary(req.user ? { role: req.user.role, userId: req.user.id } : undefined);
   res.json({ data });
 }
 
-export async function bookingHeatmap(_req: Request, res: Response) {
-  const data = await service.bookingHeatmap();
+export async function bookingHeatmap(req: Request, res: Response) {
+  const data = await service.bookingHeatmap(req.user ? { role: req.user.role, userId: req.user.id } : undefined);
   res.json({ data });
 }
 
-export async function assetsByStatus(_req: Request, res: Response) {
-  const data = await service.assetsByStatus();
+export async function assetsByStatus(req: Request, res: Response) {
+  const data = await service.assetsByStatus(req.user ? { role: req.user.role, userId: req.user.id } : undefined);
   res.json({ data });
 }
 
-export async function assetsByCategory(_req: Request, res: Response) {
-  const data = await service.assetsByCategory();
+export async function assetsByCategory(req: Request, res: Response) {
+  const data = await service.assetsByCategory(req.user ? { role: req.user.role, userId: req.user.id } : undefined);
   res.json({ data });
 }

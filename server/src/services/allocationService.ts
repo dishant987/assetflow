@@ -8,7 +8,25 @@ import { eq, and, desc, isNull, sql } from "drizzle-orm";
 import * as notificationService from "./notificationService";
 import * as activityLog from "./activityLogService";
 
-export async function list() {
+export async function list(opts?: { userId?: string; role?: string }) {
+  const conditions = [];
+
+  if (opts?.role === "department_head" && opts?.userId) {
+    const [emp] = await db
+      .select({ departmentId: employees.departmentId })
+      .from(employees)
+      .where(eq(employees.id, opts.userId))
+      .limit(1);
+    const userDeptId = emp?.departmentId;
+    if (userDeptId) {
+      conditions.push(eq(allocations.departmentId, userDeptId));
+    } else {
+      conditions.push(sql`1 = 0`);
+    }
+  }
+
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+
   return db
     .select({
       id: allocations.id,
@@ -28,10 +46,38 @@ export async function list() {
     .leftJoin(assets, eq(allocations.assetId, assets.id))
     .leftJoin(employees, eq(allocations.employeeId, employees.id))
     .leftJoin(departments, eq(allocations.departmentId, departments.id))
+    .where(where)
     .orderBy(desc(allocations.allocatedAt));
 }
 
-export async function getById(id: string) {
+async function checkAllocationAccess(allocationId: string, opts?: { role?: string; userId?: string }) {
+  if (opts?.role === "department_head" && opts?.userId) {
+    const [emp] = await db
+      .select({ departmentId: employees.departmentId })
+      .from(employees)
+      .where(eq(employees.id, opts.userId))
+      .limit(1);
+    const userDeptId = emp?.departmentId;
+    if (!userDeptId) {
+      throw new AppError("FORBIDDEN", "You do not belong to any department.", 403);
+    }
+
+    const [alloc] = await db
+      .select({ departmentId: allocations.departmentId })
+      .from(allocations)
+      .where(eq(allocations.id, allocationId))
+      .limit(1);
+    if (!alloc) {
+      throw new AppError("NOT_FOUND", "Allocation not found.", 404);
+    }
+    if (alloc.departmentId !== userDeptId) {
+      throw new AppError("FORBIDDEN", "You do not have access to allocations outside your department.", 403);
+    }
+  }
+}
+
+export async function getById(id: string, opts?: { role?: string; userId?: string }) {
+  await checkAllocationAccess(id, opts);
   const [row] = await db
     .select({
       id: allocations.id,
@@ -58,7 +104,35 @@ export async function getById(id: string) {
   return row;
 }
 
-export async function create(data: { assetId: string; employeeId: string; departmentId?: string; notes?: string; expectedReturnAt?: string }) {
+export async function create(
+  data: { assetId: string; employeeId: string; departmentId?: string; notes?: string; expectedReturnAt?: string },
+  opts?: { role?: string; userId?: string }
+) {
+  if (opts?.role === "department_head" && opts?.userId) {
+    const [headEmp] = await db
+      .select({ departmentId: employees.departmentId })
+      .from(employees)
+      .where(eq(employees.id, opts.userId))
+      .limit(1);
+    const userDeptId = headEmp?.departmentId;
+    if (!userDeptId) {
+      throw new AppError("FORBIDDEN", "You do not belong to any department.", 403);
+    }
+
+    // Force departmentId to be the department head's department
+    data.departmentId = userDeptId;
+
+    // Check if employee is in the same department
+    const [targetEmp] = await db
+      .select({ departmentId: employees.departmentId })
+      .from(employees)
+      .where(eq(employees.id, data.employeeId))
+      .limit(1);
+    if (!targetEmp || targetEmp.departmentId !== userDeptId) {
+      throw new AppError("FORBIDDEN", "You can only allocate assets to employees in your department.", 403);
+    }
+  }
+
   // Check asset exists and is available
   const [asset] = await db.select().from(assets).where(eq(assets.id, data.assetId)).limit(1);
   if (!asset) throw new AppError("NOT_FOUND", "Asset not found.", 404);
@@ -108,8 +182,9 @@ export async function create(data: { assetId: string; employeeId: string; depart
   return alloc;
 }
 
-export async function returnAsset(id: string, notes?: string) {
-  const alloc = await getById(id);
+export async function returnAsset(id: string, notes?: string, opts?: { role?: string; userId?: string }) {
+  await checkAllocationAccess(id, opts);
+  const alloc = await getById(id, opts);
   if (alloc.status !== "active") throw new AppError("ALREADY_RETURNED", "This allocation has already been returned.", 400);
 
   const [updated] = await db

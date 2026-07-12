@@ -10,6 +10,7 @@ export const assetStatus = pgEnum("asset_status", [
   "retired",
   "lost",
   "disposed",
+  "damaged",
 ]);
 
 export const allocationStatus = pgEnum("allocation_status", ["active", "returned", "transfer_pending"]);

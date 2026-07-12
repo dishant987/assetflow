@@ -34,6 +34,8 @@ const navByRole: Record<string, { label: string; path: string }[]> = {
     { label: "Assets", path: "/assets" },
     { label: "Allocations", path: "/allocations" },
     { label: "Bookings", path: "/bookings" },
+    { label: "Audits", path: "/audits" },
+    { label: "Reports", path: "/reports" },
     { label: "Notifications", path: "/notifications" },
   ],
   employee: [

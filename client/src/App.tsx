@@ -56,12 +56,14 @@ function App() {
               </Route>
               <Route path="assets" element={<AssetsPage />} />
               <Route path="assets/:id" element={<AssetDetailPage />} />
-              <Route element={<RequireRole roles={["admin", "manager"]} />}>
+              <Route element={<RequireRole roles={["admin", "manager", "department_head"]} />}>
                 <Route path="allocations" element={<AllocationsPage />} />
-                <Route path="maintenance" element={<MaintenancePage />} />
                 <Route path="audits" element={<AuditsPage />} />
                 <Route path="audits/:id" element={<AuditDetailPage />} />
                 <Route path="reports" element={<ReportsPage />} />
+              </Route>
+              <Route element={<RequireRole roles={["admin", "manager"]} />}>
+                <Route path="maintenance" element={<MaintenancePage />} />
                 <Route path="activity-log" element={<ActivityLogPage />} />
               </Route>
               <Route path="bookings" element={<BookingsPage />} />

@@ -59,10 +59,12 @@ export default function AuditsPage() {
 function CreateModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
   const [form, setForm] = useState({ title: "", description: "", plannedStart: "", plannedEnd: "", conductedBy: "", scopeDepartmentId: "", scopeLocation: "", auditorIdsStr: "" });
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     api.get("/employees").then((r) => setEmployees(r.data.data)).catch(() => {});
+    api.get("/departments").then((r) => setDepartments(r.data.data)).catch(() => {});
   }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -78,8 +80,7 @@ function CreateModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
       const auditorIds = form.auditorIdsStr ? form.auditorIdsStr.split(",").map(s => s.trim()).filter(Boolean) : [];
       if (auditorIds.length) payload.auditorIds = auditorIds;
       const r = await api.post("/audits", payload);
-      await api.post(`/audits/${r.data.data.id}/populate`);
-      showToast("Audit created with all active assets", "success");
+      showToast("Audit cycle created successfully", "success");
       onDone();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ?? "Failed";
@@ -94,10 +95,32 @@ function CreateModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
         <Input label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
         <Input label="Planned Start" type="date" value={form.plannedStart} onChange={(e) => setForm({ ...form, plannedStart: e.target.value })} />
         <Input label="Planned End" type="date" value={form.plannedEnd} onChange={(e) => setForm({ ...form, plannedEnd: e.target.value })} />
-        <Select label="Assign Auditor" value={form.conductedBy} onChange={(e) => setForm({ ...form, conductedBy: e.target.value })} placeholder="— Select —" options={employees.map((e) => ({ value: String(e.id), label: `${e.firstName} ${e.lastName}` }))} />
-        <Input label="Scope Department" value={form.scopeDepartmentId} onChange={(e) => setForm({...form, scopeDepartmentId: e.target.value})} placeholder="Department ID" />
+        <Select
+          label="Conducted By"
+          value={form.conductedBy}
+          onChange={(e) => setForm({ ...form, conductedBy: e.target.value })}
+          options={[
+            { value: "", label: "Select Employee" },
+            ...employees.map((emp) => ({
+              value: emp.id,
+              label: `${emp.firstName} ${emp.lastName}`
+            }))
+          ]}
+        />
+        <Select
+          label="Scope Department"
+          value={form.scopeDepartmentId}
+          onChange={(e) => setForm({ ...form, scopeDepartmentId: e.target.value })}
+          options={[
+            { value: "", label: "All Departments" },
+            ...departments.map((dept) => ({
+              value: dept.id,
+              label: dept.name
+            }))
+          ]}
+        />
         <Input label="Scope Location" value={form.scopeLocation} onChange={(e) => setForm({...form, scopeLocation: e.target.value})} placeholder="e.g. Floor 2, Building A" />
-        <Input label="Auditor IDs (comma-separated)" value={form.auditorIdsStr} onChange={(e) => setForm({...form, auditorIdsStr: e.target.value})} placeholder="uuid1, uuid2, uuid3" />
+        <Input label="Auditor IDs (comma-separated)" value={form.auditorIdsStr} onChange={(e) => setForm({...form, auditorIdsStr: e.target.value})} placeholder="Emails or IDs" />
         <div className="modal-footer" style={{ padding: 0, border: "none" }}>
           <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={saving}>Create & Populate</Button>

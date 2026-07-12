@@ -71,7 +71,9 @@ export default function AllocationsPage() {
       key: "actions", label: "", render: (a) =>
         a.status === "active" ? (
           <div className="flex gap-xs">
-            <Button variant="ghost" size="sm" onClick={() => setShowReturn(a)}>Return</Button>
+            {(user?.role === "admin" || user?.role === "manager") && (
+              <Button variant="ghost" size="sm" onClick={() => setShowReturn(a)}>Return</Button>
+            )}
             <Button variant="ghost" size="sm" onClick={() => setShowTransfer({ assetTag: a.assetTag, allocationId: a.id })}>Transfer</Button>
           </div>
         ) : null,
@@ -86,7 +88,7 @@ export default function AllocationsPage() {
     { key: "requestedAt", label: "Requested", render: (t) => new Date(t.requestedAt).toLocaleString() },
     {
       key: "actions", label: "", render: (t) =>
-        t.status === "pending" && (user?.role === "admin" || user?.role === "manager") ? (
+        t.status === "pending" && (user?.role === "admin" || user?.role === "manager" || user?.role === "department_head") ? (
           <div className="flex gap-xs">
             <Button variant="ghost" size="sm" onClick={() => setShowTransferAction({ req: t, action: "approve" })}>Approve</Button>
             <Button variant="ghost" size="sm" onClick={() => setShowTransferAction({ req: t, action: "reject" })}>Reject</Button>
@@ -101,7 +103,9 @@ export default function AllocationsPage() {
         <Button variant={tab === "allocations" ? "primary" : "ghost"} size="sm" onClick={() => setTab("allocations")}>Allocations</Button>
         <Button variant={tab === "transfers" ? "primary" : "ghost"} size="sm" onClick={() => setTab("transfers")}>Transfer Requests</Button>
         <div style={{ flex: 1 }} />
-        <Button onClick={() => setShowAllocate(true)}>+ Allocate Asset</Button>
+        {(user?.role === "admin" || user?.role === "manager") && (
+          <Button onClick={() => setShowAllocate(true)}>+ Allocate Asset</Button>
+        )}
       </div>
 
       <Card>

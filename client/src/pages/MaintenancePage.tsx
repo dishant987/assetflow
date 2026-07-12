@@ -92,23 +92,33 @@ export default function MaintenancePage() {
 }
 
 function RaiseModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
-  const [form, setForm] = useState({ assetTag: "", issueDescription: "", priority: "medium" });
+  const [form, setForm] = useState({ assetId: "", issueDescription: "", priority: "medium" });
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [assets, setAssets] = useState<{ id: string; name: string; assetTag: string; status: string }[]>([]);
+
+  useEffect(() => {
+    api.get("/assets")
+      .then((r) => {
+        const activeAssets = r.data.data.filter(
+          (a: { status: string }) => a.status !== "retired" && a.status !== "lost" && a.status !== "disposed"
+        );
+        setAssets(activeAssets);
+      })
+      .catch(() => {});
+  }, []);
 
   const handleRaise = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      const asset = await api.get(`/assets?search=${form.assetTag}`);
-      if (!asset.data.data.length) { showToast("Asset not found", "error"); setSaving(false); return; }
       let photoUrl = "";
       if (photoFile) {
         const fd = new FormData(); fd.append("file", photoFile);
         const up = await api.post("/upload", fd, { headers: { "Content-Type": "multipart/form-data" } });
         photoUrl = up.data.data.url;
       }
-      await api.post("/maintenance", { assetId: asset.data.data[0].id, issueDescription: form.issueDescription, priority: form.priority, photoUrl });
+      await api.post("/maintenance", { assetId: form.assetId, issueDescription: form.issueDescription, priority: form.priority, photoUrl });
       showToast("Maintenance request raised", "success");
       onDone();
     } catch (err: unknown) {
@@ -120,7 +130,17 @@ function RaiseModal({ onClose, onDone }: { onClose: () => void; onDone: () => vo
   return (
     <Modal open onClose={onClose} title="Raise Maintenance Request">
       <form onSubmit={handleRaise} className="flex flex-col gap-md">
-        <Input label="Asset Tag" value={form.assetTag} onChange={(e) => setForm({ ...form, assetTag: e.target.value })} required placeholder="e.g. AF-0114" />
+        <Select
+          label="Asset"
+          value={form.assetId}
+          onChange={(e) => setForm({ ...form, assetId: e.target.value })}
+          required
+          placeholder="Select Asset..."
+          options={assets.map((a) => ({
+            value: a.id,
+            label: `${a.name} (${a.assetTag}) - ${a.status.replace("_", " ")}`,
+          }))}
+        />
         <Input label="Issue Description" value={form.issueDescription} onChange={(e) => setForm({ ...form, issueDescription: e.target.value })} required />
         <Select label="Priority" value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })} required options={[{ value: "low", label: "Low" }, { value: "medium", label: "Medium" }, { value: "high", label: "High" }, { value: "critical", label: "Critical" }]} />
         <div className="field">

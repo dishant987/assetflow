@@ -3,13 +3,56 @@ import { auditCycles } from "../models/auditCycles";
 import { auditItems } from "../models/auditItems";
 import { assets } from "../models/assets";
 import { employees } from "../models/employees";
+import { allocations } from "../models/allocations";
 import { AppError } from "../utils/AppError";
-import { eq, sql, ne, and, inArray } from "drizzle-orm";
+import { eq, sql, ne, and, inArray, or } from "drizzle-orm";
+import { departments } from "../models/departments";
 import * as notificationService from "./notificationService";
 import * as activityLog from "./activityLogService";
 
-export async function listCycles() {
-  return db
+async function checkCycleAccess(cycleId: string, opts?: { role: string; userId: string }) {
+  if (opts?.role === "department_head" && opts?.userId) {
+    const [cycle] = await db
+      .select({
+        scopeDepartmentId: auditCycles.scopeDepartmentId,
+        conductedBy: auditCycles.conductedBy,
+        auditorIds: auditCycles.auditorIds,
+      })
+      .from(auditCycles)
+      .where(eq(auditCycles.id, cycleId))
+      .limit(1);
+    if (!cycle) throw new AppError("NOT_FOUND", "Audit cycle not found.", 404);
+
+    const [emp] = await db
+      .select({ departmentId: employees.departmentId })
+      .from(employees)
+      .where(eq(employees.id, opts.userId))
+      .limit(1);
+    const departmentId = emp?.departmentId || null;
+
+    const isAuthorized =
+      (cycle.scopeDepartmentId === departmentId && departmentId !== null) ||
+      cycle.conductedBy === opts.userId ||
+      (cycle.auditorIds && (cycle.auditorIds as string[]).includes(opts.userId));
+
+    if (!isAuthorized) {
+      throw new AppError("FORBIDDEN", "You do not have access to this audit cycle.", 403);
+    }
+  }
+}
+
+export async function listCycles(opts?: { role: string; userId: string }) {
+  let departmentId: string | null = null;
+  if (opts?.role === "department_head" && opts?.userId) {
+    const [emp] = await db
+      .select({ departmentId: employees.departmentId })
+      .from(employees)
+      .where(eq(employees.id, opts.userId))
+      .limit(1);
+    departmentId = emp?.departmentId || null;
+  }
+
+  let query = db
     .select({
       id: auditCycles.id,
       title: auditCycles.title,
@@ -28,10 +71,24 @@ export async function listCycles() {
       itemCount: sql<number>`(SELECT count(*) FROM audit_items WHERE audit_items.audit_cycle_id = ${auditCycles.id})`,
     })
     .from(auditCycles)
-    .orderBy(auditCycles.createdAt);
+    .$dynamic();
+
+  if (opts?.role === "department_head" && opts?.userId) {
+    query = query.where(
+      or(
+        departmentId ? eq(auditCycles.scopeDepartmentId, departmentId) : sql`false`,
+        eq(auditCycles.conductedBy, opts.userId),
+        sql`${auditCycles.auditorIds}::jsonb @> ${JSON.stringify([opts.userId])}::jsonb`
+      )
+    );
+  }
+
+  return query.orderBy(auditCycles.createdAt);
 }
 
-export async function getCycleById(id: string) {
+export async function getCycleById(id: string, opts?: { role: string; userId: string }) {
+  await checkCycleAccess(id, opts);
+
   const [cycle] = await db
     .select({
       id: auditCycles.id,
@@ -78,25 +135,139 @@ export async function getCycleById(id: string) {
   return { ...cycle, items };
 }
 
-export async function createCycle(data: { title: string; description?: string; plannedStart?: string; plannedEnd?: string; conductedBy?: string; scopeDepartmentId?: string; scopeLocation?: string; auditorIds?: string[] }) {
-  const [cycle] = await db.insert(auditCycles).values(data as never).returning();
+export async function createCycle(data: {
+  title: string;
+  description?: string;
+  plannedStart?: string;
+  plannedEnd?: string;
+  conductedBy?: string;
+  scopeDepartmentId?: string;
+  scopeLocation?: string;
+  auditorIds?: string[];
+}) {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  let scopeDeptId = data.scopeDepartmentId;
+  if (scopeDeptId && !uuidRegex.test(scopeDeptId)) {
+    const [dept] = await db
+      .select({ id: departments.id })
+      .from(departments)
+      .where(or(
+        eq(sql`lower(${departments.name})`, scopeDeptId.toLowerCase()),
+        eq(sql`lower(${departments.code})`, scopeDeptId.toLowerCase())
+      ))
+      .limit(1);
+    scopeDeptId = dept?.id || null;
+  }
+
+  let condBy = data.conductedBy;
+  if (condBy && !uuidRegex.test(condBy)) {
+    if (condBy.includes("@")) {
+      const [emp] = await db.select({ id: employees.id }).from(employees).where(eq(sql`lower(${employees.email})`, condBy.toLowerCase())).limit(1);
+      condBy = emp?.id || null;
+    } else {
+      const parts = condBy.split(" ").map((s) => s.trim()).filter(Boolean);
+      if (parts.length > 0) {
+        const firstName = parts[0];
+        const lastName = parts.slice(1).join(" ") || "";
+        const [emp] = await db
+          .select({ id: employees.id })
+          .from(employees)
+          .where(and(
+            eq(sql`lower(${employees.firstName})`, firstName.toLowerCase()),
+            lastName ? eq(sql`lower(${employees.lastName})`, lastName.toLowerCase()) : sql`true`
+          ))
+          .limit(1);
+        condBy = emp?.id || null;
+      }
+    }
+  }
+
+  let resolvedAuditors: string[] = [];
+  if (data.auditorIds && data.auditorIds.length > 0) {
+    for (const a of data.auditorIds) {
+      if (uuidRegex.test(a)) {
+        resolvedAuditors.push(a);
+      } else if (a.includes("@")) {
+        const [emp] = await db.select({ id: employees.id }).from(employees).where(eq(sql`lower(${employees.email})`, a.toLowerCase())).limit(1);
+        if (emp) resolvedAuditors.push(emp.id);
+      } else {
+        const parts = a.split(" ").map((s) => s.trim()).filter(Boolean);
+        if (parts.length > 0) {
+          const firstName = parts[0];
+          const lastName = parts.slice(1).join(" ") || "";
+          const [emp] = await db
+            .select({ id: employees.id })
+            .from(employees)
+            .where(and(
+              eq(sql`lower(${employees.firstName})`, firstName.toLowerCase()),
+              lastName ? eq(sql`lower(${employees.lastName})`, lastName.toLowerCase()) : sql`true`
+            ))
+            .limit(1);
+          if (emp) resolvedAuditors.push(emp.id);
+        }
+      }
+    }
+  }
+
+  const [cycle] = await db
+    .insert(auditCycles)
+    .values({
+      title: data.title,
+      description: data.description ?? null,
+      plannedStart: data.plannedStart ? new Date(data.plannedStart) : null,
+      plannedEnd: data.plannedEnd ? new Date(data.plannedEnd) : null,
+      conductedBy: condBy,
+      scopeDepartmentId: scopeDeptId,
+      scopeLocation: data.scopeLocation ?? null,
+      auditorIds: resolvedAuditors,
+    } as any)
+    .returning();
+
   return cycle;
 }
 
-export async function populateItems(cycleId: string) {
+export async function populateItems(cycleId: string, opts?: { role: string; userId: string }) {
+  await checkCycleAccess(cycleId, opts);
+  const [cycle] = await db
+    .select({ scopeDepartmentId: auditCycles.scopeDepartmentId, scopeLocation: auditCycles.scopeLocation })
+    .from(auditCycles)
+    .where(eq(auditCycles.id, cycleId))
+    .limit(1);
+
+  if (!cycle) throw new AppError("NOT_FOUND", "Audit cycle not found.", 404);
+
+  const conditions = [ne(assets.status, "retired")];
+
+  if (cycle.scopeLocation) {
+    conditions.push(eq(assets.location, cycle.scopeLocation));
+  }
+
+  if (cycle.scopeDepartmentId) {
+    conditions.push(sql`${assets.id} IN (
+      SELECT asset_id FROM allocations WHERE department_id = ${cycle.scopeDepartmentId} AND status = 'active'
+    )`);
+  }
+
   const all = await db
     .select({ id: assets.id, location: assets.location })
     .from(assets)
-    .where(sql`${assets.status} != 'retired'`);
+    .where(and(...conditions));
+
   if (all.length === 0) return 0;
+
+  // Clear existing items first to allow re-populating safely
+  await db.delete(auditItems).where(eq(auditItems.auditCycleId, cycleId));
+
   await db.insert(auditItems).values(
     all.map((a) => ({ auditCycleId: cycleId, assetId: a.id, expectedLocation: a.location })),
   );
   return all.length;
 }
 
-export async function updateCycleStatus(id: string, status: string) {
-  const cycle = await getCycleById(id);
+export async function updateCycleStatus(id: string, status: string, opts?: { role: string; userId: string }) {
+  await checkCycleAccess(id, opts);
+  const cycle = await getCycleById(id, opts);
   const updates: Record<string, unknown> = { status };
   if (status === "in_progress") updates.startedAt = new Date();
   if (status === "completed") updates.completedAt = new Date();
@@ -109,6 +280,15 @@ export async function updateCycleStatus(id: string, status: string) {
       .where(and(eq(auditItems.auditCycleId, id), eq(auditItems.verdict, "missing")));
     for (const item of missing) {
       await db.update(assets).set({ status: "lost" }).where(eq(assets.id, item.assetId));
+    }
+
+    // Flip confirmed-damaged assets to "damaged" status and "damaged" condition
+    const damaged = await db
+      .select({ id: auditItems.id, assetId: auditItems.assetId })
+      .from(auditItems)
+      .where(and(eq(auditItems.auditCycleId, id), eq(auditItems.verdict, "damaged")));
+    for (const item of damaged) {
+      await db.update(assets).set({ status: "damaged" as any, condition: "damaged" }).where(eq(assets.id, item.assetId));
     }
 
     // Notify discrepancies
@@ -138,7 +318,7 @@ export async function updateCycleStatus(id: string, status: string) {
   return { ...cycle, ...updates };
 }
 
-export async function updateItemVerdict(itemId: string, data: { verdict?: string; actualLocation?: string; discrepancy?: string; notes?: string }) {
+export async function updateItemVerdict(itemId: string, data: { verdict?: string; actualLocation?: string; discrepancy?: string; notes?: string }, opts?: { role: string; userId: string }) {
   const [item] = await db
     .select({ id: auditItems.id, auditCycleId: auditItems.auditCycleId, status: auditCycles.status })
     .from(auditItems)
@@ -147,6 +327,8 @@ export async function updateItemVerdict(itemId: string, data: { verdict?: string
     .limit(1);
 
   if (!item) throw new AppError("NOT_FOUND", "Audit item not found.", 404);
+  await checkCycleAccess(item.auditCycleId, opts);
+
   if (item.status === "completed" || item.status === "cancelled") {
     throw new AppError("CYCLE_LOCKED", "Cannot modify items in a completed or cancelled audit cycle.", 400);
   }
@@ -163,7 +345,8 @@ export async function updateItemVerdict(itemId: string, data: { verdict?: string
   return updated;
 }
 
-export async function discrepancyReport(cycleId: string) {
+export async function discrepancyReport(cycleId: string, opts?: { role: string; userId: string }) {
+  await checkCycleAccess(cycleId, opts);
   return db
     .select({
       id: auditItems.id,
