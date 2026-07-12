@@ -292,7 +292,8 @@ function BookingDetailModal({ booking, onClose, onDone }: { booking: Booking; on
 
   const displayStatus = computeDisplayStatus(booking.status, booking.slotStart, booking.slotEnd);
 
-  const canManage = user?.role === "admin" || user?.role === "manager" || booking.bookedBy === user?.userId;
+  const currentUserId = (user as any)?.id ?? (user as any)?.userId;
+  const canManage = user?.role === "admin" || user?.role === "manager" || booking.bookedBy === currentUserId;
 
   const handleCancel = async () => {
     setSaving(true);

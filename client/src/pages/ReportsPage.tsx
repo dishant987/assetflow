@@ -120,7 +120,7 @@ export default function ReportsPage() {
                   innerRadius={60}
                   outerRadius={85}
                   paddingAngle={3}
-                  label={({ status, percent }) => percent > 0.05 ? `${formatLabel(status)} (${(percent * 100).toFixed(0)}%)` : ""}
+                  label={({ name, percent }) => (percent ?? 0) > 0.05 ? `${formatLabel(name as string)} (${((percent ?? 0) * 100).toFixed(0)}%)` : ""}
                   labelLine={true}
                 >
                   {byStatus.map((entry: any, i) => (
