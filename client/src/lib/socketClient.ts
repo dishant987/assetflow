@@ -4,8 +4,9 @@ let socket: Socket | null = null;
 
 export function connectSocket(token: string) {
   if (socket?.connected) return socket;
-  const url = import.meta.env.VITE_API_URL || "";
-  socket = io(url, { auth: { token }, transports: ["websocket", "polling"] });
+  const rawUrl = import.meta.env.VITE_API_URL?.toString().trim() || "";
+  const url = rawUrl.replace(/\/+$|\/api$/i, "");
+  socket = io(url || undefined, { auth: { token }, transports: ["websocket", "polling"] });
   return socket;
 }
 
