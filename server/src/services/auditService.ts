@@ -148,7 +148,7 @@ export async function createCycle(data: {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
   let scopeDeptId = data.scopeDepartmentId;
-  if (scopeDeptId && !uuidRegex.test(scopeDeptId)) {
+    if (scopeDeptId && !uuidRegex.test(scopeDeptId)) {
     const [dept] = await db
       .select({ id: departments.id })
       .from(departments)
@@ -157,14 +157,14 @@ export async function createCycle(data: {
         eq(sql`lower(${departments.code})`, scopeDeptId.toLowerCase())
       ))
       .limit(1);
-    scopeDeptId = dept?.id || null;
+    scopeDeptId = dept?.id ?? undefined;
   }
 
   let condBy = data.conductedBy;
-  if (condBy && !uuidRegex.test(condBy)) {
+    if (condBy && !uuidRegex.test(condBy)) {
     if (condBy.includes("@")) {
       const [emp] = await db.select({ id: employees.id }).from(employees).where(eq(sql`lower(${employees.email})`, condBy.toLowerCase())).limit(1);
-      condBy = emp?.id || null;
+        condBy = emp?.id ?? undefined;
     } else {
       const parts = condBy.split(" ").map((s) => s.trim()).filter(Boolean);
       if (parts.length > 0) {
@@ -178,7 +178,7 @@ export async function createCycle(data: {
             lastName ? eq(sql`lower(${employees.lastName})`, lastName.toLowerCase()) : sql`true`
           ))
           .limit(1);
-        condBy = emp?.id || null;
+          condBy = emp?.id ?? undefined;
       }
     }
   }

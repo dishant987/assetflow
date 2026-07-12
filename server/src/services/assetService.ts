@@ -24,7 +24,14 @@ type CreateAsset = {
   condition?: string;
   bookable?: number;
   notes?: string;
-  status?: string;
+  status?:
+    | "available"
+    | "allocated"
+    | "under_maintenance"
+    | "retired"
+    | "lost"
+    | "disposed"
+    | "damaged";
 };
 
 export async function list(opts: { search?: string; categoryId?: string; status?: string; location?: string }) {
