@@ -1,8 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   pgTable,
-  serial,
-  integer,
+  uuid,
   text,
   timestamp,
   uniqueIndex,
@@ -16,15 +15,16 @@ import { departments } from "./departments";
 export const allocations = pgTable(
   "allocations",
   {
-    id: serial("id").primaryKey(),
-    assetId: integer("asset_id")
+    id: uuid("id").defaultRandom().primaryKey(),
+    assetId: uuid("asset_id")
       .notNull()
       .references(() => assets.id),
-    employeeId: integer("employee_id")
+    employeeId: uuid("employee_id")
       .notNull()
       .references(() => employees.id),
-    departmentId: integer("department_id").references(() => departments.id),
+    departmentId: uuid("department_id").references(() => departments.id),
     allocatedAt: timestamp("allocated_at").defaultNow().notNull(),
+    expectedReturnAt: timestamp("expected_return_at"),
     returnedAt: timestamp("returned_at"),
     status: allocationStatus("status").default("active").notNull(),
     notes: text("notes"),

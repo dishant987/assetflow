@@ -13,7 +13,10 @@ const createSchema = z.object({
   description: z.string().optional(),
   plannedStart: z.string().optional(),
   plannedEnd: z.string().optional(),
-  conductedBy: z.number().int().positive().optional(),
+  conductedBy: z.string().uuid().optional().nullable(),
+  scopeDepartmentId: z.string().uuid().optional().nullable(),
+  scopeLocation: z.string().optional().nullable(),
+  auditorIds: z.array(z.string().uuid()).optional().default([]),
 });
 
 const verdictSchema = z.object({

@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, index } from "drizzle-orm/pg-core";
 import { maintenanceStatus, priorityLevel } from "./enums";
 import { assets } from "./assets";
 import { employees } from "./employees";
@@ -6,14 +6,14 @@ import { employees } from "./employees";
 export const maintenanceRequests = pgTable(
   "maintenance_requests",
   {
-    id: serial("id").primaryKey(),
-    assetId: integer("asset_id")
+    id: uuid("id").defaultRandom().primaryKey(),
+    assetId: uuid("asset_id")
       .notNull()
       .references(() => assets.id),
-    requestedBy: integer("requested_by")
+    requestedBy: uuid("requested_by")
       .notNull()
       .references(() => employees.id),
-    assignedTo: integer("assigned_to").references(() => employees.id),
+    assignedTo: uuid("assigned_to").references(() => employees.id),
     issueDescription: text("issue_description").notNull(),
     photoUrl: text("photo_url"),
     priority: priorityLevel("priority").default("medium").notNull(),

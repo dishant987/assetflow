@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, index } from "drizzle-orm/pg-core";
 import { bookingStatus } from "./enums";
 import { assets } from "./assets";
 import { employees } from "./employees";
@@ -18,11 +18,11 @@ import { employees } from "./employees";
 export const bookings = pgTable(
   "bookings",
   {
-    id: serial("id").primaryKey(),
-    assetId: integer("asset_id")
+    id: uuid("id").defaultRandom().primaryKey(),
+    assetId: uuid("asset_id")
       .notNull()
       .references(() => assets.id),
-    bookedBy: integer("booked_by")
+    bookedBy: uuid("booked_by")
       .notNull()
       .references(() => employees.id),
     purpose: text("purpose"),

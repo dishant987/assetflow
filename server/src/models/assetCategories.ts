@@ -1,7 +1,7 @@
-import { pgTable, serial, varchar, text, jsonb, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, jsonb, boolean, timestamp } from "drizzle-orm/pg-core";
 
 export const assetCategories = pgTable("asset_categories", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").defaultRandom().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   code: varchar("code", { length: 50 }).notNull().unique(),
   description: text("description"),

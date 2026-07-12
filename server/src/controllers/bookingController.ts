@@ -7,7 +7,7 @@ export async function list(_req: Request, res: Response) {
 }
 
 export async function getById(req: Request, res: Response) {
-  const data = await service.getById(Number(req.params.id));
+  const data = await service.getById(req.params.id);
   res.json({ data });
 }
 
@@ -17,16 +17,16 @@ export async function create(req: Request, res: Response) {
 }
 
 export async function cancel(req: Request, res: Response) {
-  const data = await service.cancel(Number(req.params.id));
+  const data = await service.cancel(req.params.id);
   res.json({ data });
 }
 
 export async function approve(req: Request, res: Response) {
-  const data = await service.approve(Number(req.params.id));
+  const data = await service.approve(req.params.id);
   res.json({ data });
 }
 
 export async function reschedule(req: Request, res: Response) {
-  const data = await service.reschedule(Number(req.params.id), req.body.slotStart, req.body.slotEnd);
+  const data = await service.reschedule(req.params.id, req.body.slotStart, req.body.slotEnd);
   res.json({ data });
 }

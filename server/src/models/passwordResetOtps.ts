@@ -1,9 +1,9 @@
-import { pgTable, serial, integer, varchar, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, uuid, integer, varchar, timestamp } from "drizzle-orm/pg-core";
 import { employees } from "./employees";
 
 export const passwordResetOtps = pgTable("password_reset_otps", {
-  id: serial("id").primaryKey(),
-  employeeId: integer("employee_id")
+  id: uuid("id").defaultRandom().primaryKey(),
+  employeeId: uuid("employee_id")
     .notNull()
     .references(() => employees.id),
   otpHash: varchar("otp_hash", { length: 255 }).notNull(),

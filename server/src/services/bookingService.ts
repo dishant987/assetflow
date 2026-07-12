@@ -28,7 +28,7 @@ export async function list() {
     .orderBy(bookings.slotStart);
 }
 
-export async function getById(id: number) {
+export async function getById(id: string) {
   const [row] = await db
     .select({
       id: bookings.id,
@@ -53,8 +53,8 @@ export async function getById(id: number) {
 }
 
 export async function create(data: {
-  assetId: number;
-  bookedBy: number;
+  assetId: string;
+  bookedBy: string;
   purpose?: string;
   slotStart: string;
   slotEnd: string;
@@ -126,7 +126,7 @@ export async function create(data: {
   return booking;
 }
 
-export async function cancel(id: number) {
+export async function cancel(id: string) {
   const [row] = await db
     .select()
     .from(bookings)
@@ -156,7 +156,7 @@ export async function cancel(id: number) {
   return updated;
 }
 
-export async function approve(id: number) {
+export async function approve(id: string) {
   const [row] = await db
     .select()
     .from(bookings)
@@ -195,7 +195,7 @@ export async function approve(id: number) {
   return updated;
 }
 
-export async function reschedule(id: number, slotStart: string, slotEnd: string) {
+export async function reschedule(id: string, slotStart: string, slotEnd: string) {
   const [row] = await db
     .select()
     .from(bookings)

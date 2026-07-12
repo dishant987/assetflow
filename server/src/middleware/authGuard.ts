@@ -4,7 +4,7 @@ import { env } from "../config/env";
 import { AppError } from "../utils/AppError";
 
 export interface AuthPayload {
-  userId: number;
+  userId: string;
   role: string;
 }
 

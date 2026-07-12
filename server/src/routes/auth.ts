@@ -35,6 +35,19 @@ const resetSchema = z.object({
   newPassword: z.string().min(8, "Password must be at least 8 characters"),
 });
 
+const updateProfileSchema = z.object({
+  firstName: z.string().min(1).max(100).optional(),
+  lastName: z.string().min(1).max(100).optional(),
+  phone: z.string().optional(),
+  designation: z.string().optional(),
+  avatarUrl: z.string().url().optional().nullable(),
+});
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
+});
+
 router.post("/signup", validate(signupSchema), asyncHandler(ctrl.signup));
 router.post("/login", loginLimiter, validate(loginSchema), asyncHandler(ctrl.login));
 router.post("/refresh", asyncHandler(ctrl.refresh));
@@ -43,5 +56,7 @@ router.post("/logout", authGuard, asyncHandler(ctrl.logout));
 router.post("/forgot-password", otpLimiter, validate(forgotSchema), asyncHandler(ctrl.forgotPassword));
 router.post("/verify-otp", otpLimiter, validate(otpSchema), asyncHandler(ctrl.verifyOtp));
 router.post("/reset-password", validate(resetSchema), asyncHandler(ctrl.resetPassword));
+router.patch("/profile", authGuard, validate(updateProfileSchema), asyncHandler(ctrl.updateProfile));
+router.patch("/profile/password", authGuard, validate(changePasswordSchema), asyncHandler(ctrl.changePassword));
 
 export default router;

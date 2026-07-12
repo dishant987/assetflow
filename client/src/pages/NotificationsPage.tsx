@@ -18,7 +18,7 @@ export default function NotificationsPage() {
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
-  const markRead = async (id: number) => {
+  const markRead = async (id: string) => {
     try {
       await api.put(`/notifications/${id}/read`);
       fetchItems();

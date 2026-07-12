@@ -3,10 +3,10 @@ import { activityLogs } from "../models/activityLogs";
 import { eq, and, gte, lte, like, desc, sql } from "drizzle-orm";
 
 export async function log(data: {
-  employeeId?: number;
+  employeeId?: string;
   action: string;
   entityType: string;
-  entityId?: number;
+  entityId?: string;
   details?: Record<string, unknown>;
   ipAddress?: string;
 }) {
@@ -22,9 +22,9 @@ export async function log(data: {
 
 export async function list(opts: {
   entityType?: string;
-  entityId?: number;
+  entityId?: string;
   action?: string;
-  employeeId?: number;
+  employeeId?: string;
   from?: string;
   to?: string;
   limit?: number;

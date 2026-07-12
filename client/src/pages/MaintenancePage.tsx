@@ -5,11 +5,11 @@ import api from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
 
 type Maint = {
-  id: number;
-  assetId: number;
+  id: string;
+  assetId: string;
   assetTag: string;
   assetName: string;
-  requestedBy: number;
+  requestedBy: string;
   requesterName: string;
   issueDescription: string;
   photoUrl: string | null;
@@ -43,7 +43,7 @@ export default function MaintenancePage() {
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
-  const handleStatusUpdate = async (id: number, status: string) => {
+  const handleStatusUpdate = async (id: string, status: string) => {
     try { await api.patch(`/maintenance/${id}/status`, { status }); showToast(`Status updated to ${status}`, "success"); fetchItems(); } catch (err: unknown) { showToast(String(err), "error"); }
   };
 

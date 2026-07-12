@@ -1,7 +1,6 @@
 import {
   pgTable,
-  serial,
-  integer,
+  uuid,
   text,
   timestamp,
   index,
@@ -14,19 +13,19 @@ import { departments } from "./departments";
 export const transferRequests = pgTable(
   "transfer_requests",
   {
-    id: serial("id").primaryKey(),
-    assetId: integer("asset_id")
+    id: uuid("id").defaultRandom().primaryKey(),
+    assetId: uuid("asset_id")
       .notNull()
       .references(() => assets.id),
-    fromEmployeeId: integer("from_employee_id").references(() => employees.id),
-    toEmployeeId: integer("to_employee_id").references(() => employees.id),
-    fromDepartmentId: integer("from_department_id").references(() => departments.id),
-    toDepartmentId: integer("to_department_id").references(() => departments.id),
+    fromEmployeeId: uuid("from_employee_id").references(() => employees.id),
+    toEmployeeId: uuid("to_employee_id").references(() => employees.id),
+    fromDepartmentId: uuid("from_department_id").references(() => departments.id),
+    toDepartmentId: uuid("to_department_id").references(() => departments.id),
     status: transferStatus("status").default("pending").notNull(),
     requestedAt: timestamp("requested_at").defaultNow().notNull(),
     approvedAt: timestamp("approved_at"),
     rejectedAt: timestamp("rejected_at"),
-    approvedBy: integer("approved_by").references(() => employees.id),
+    approvedBy: uuid("approved_by").references(() => employees.id),
     notes: text("notes"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),

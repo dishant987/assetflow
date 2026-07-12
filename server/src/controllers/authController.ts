@@ -60,3 +60,13 @@ export async function resetPassword(req: Request, res: Response) {
   await authService.resetPassword(req.body.resetToken, req.body.newPassword);
   res.json({ data: { message: "Password updated. Please sign in with your new password." } });
 }
+
+export async function updateProfile(req: Request, res: Response) {
+  const user = await authService.updateProfile(req.user!.userId, req.body);
+  res.json({ data: user });
+}
+
+export async function changePassword(req: Request, res: Response) {
+  await authService.changePassword(req.user!.userId, req.body.currentPassword, req.body.newPassword);
+  res.json({ data: { message: "Password changed. Please sign in again." } });
+}

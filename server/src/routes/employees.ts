@@ -9,7 +9,7 @@ import { roleGuard } from "../middleware/roleGuard";
 const router = Router();
 
 const promoteSchema = z.object({
-  role: z.enum(["manager", "admin"], { message: "Role must be manager or admin" }),
+  role: z.enum(["manager", "department_head", "admin"], { message: "Role must be manager, department_head, or admin" }),
 });
 
 const statusSchema = z.object({

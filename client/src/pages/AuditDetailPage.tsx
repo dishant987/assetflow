@@ -6,8 +6,8 @@ import api from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
 
 type AuditItem = {
-  id: number;
-  assetId: number;
+  id: string;
+  assetId: string;
   expectedLocation: string | null;
   actualLocation: string | null;
   verdict: string | null;
@@ -20,7 +20,7 @@ type AuditItem = {
 };
 
 type Cycle = {
-  id: number;
+  id: string;
   title: string;
   description: string | null;
   plannedStart: string | null;
@@ -28,7 +28,8 @@ type Cycle = {
   status: string;
   startedAt: string | null;
   completedAt: string | null;
-  conductedBy: number | null;
+  conductedBy: string | null;
+  auditorIds: string[] | null;
   notes: string | null;
   items: AuditItem[];
 };
@@ -84,6 +85,7 @@ export default function AuditDetailPage() {
       <div className="flex gap-sm" style={{ marginBottom: 16, flexWrap: "wrap", fontSize: 13, color: "var(--color-text-muted)" }}>
         {cycle?.plannedStart && <span>Planned: {cycle.plannedStart} → {cycle.plannedEnd ?? "TBD"}</span>}
         {cycle?.conductedBy && <span>| Assigned to: User #{cycle.conductedBy}</span>}
+        {cycle?.auditorIds && cycle.auditorIds.length > 0 && <span>| Auditors: {cycle.auditorIds.join(", ")}</span>}
         {cycle?.status === "completed" && isAdminMgr && (
           <Button size="sm" variant="ghost" onClick={async () => {
             try {

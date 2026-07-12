@@ -5,11 +5,11 @@ import { QRCodeSVG } from "qrcode.react";
 import api from "../lib/api";
 
 type AssetDetail = {
-  id: number;
+  id: string;
   assetTag: string;
   name: string;
   description: string | null;
-  categoryId: number;
+  categoryId: string;
   categoryName: string;
   serialNumber: string | null;
   model: string | null;
@@ -28,8 +28,8 @@ type AssetDetail = {
 };
 
 type Allocation = {
-  id: number;
-  employeeId: number;
+  id: string;
+  employeeId: string;
   employeeName: string;
   allocatedAt: string;
   returnedAt: string | null;
@@ -38,7 +38,7 @@ type Allocation = {
 };
 
 type Maintenance = {
-  id: number;
+  id: string;
   issueDescription: string;
   priority: string;
   status: string;

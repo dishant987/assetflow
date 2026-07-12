@@ -7,16 +7,16 @@ export async function list(_req: Request, res: Response) {
 }
 
 export async function getById(req: Request, res: Response) {
-  const data = await service.getById(Number(req.params.id));
+  const data = await service.getById(req.params.id);
   res.json({ data });
 }
 
 export async function promote(req: Request, res: Response) {
-  const data = await service.promote(Number(req.params.id), req.body.role, req.user!.userId);
+  const data = await service.promote(req.params.id, req.body.role, req.user!.userId);
   res.json({ data });
 }
 
 export async function updateStatus(req: Request, res: Response) {
-  const data = await service.updateStatus(Number(req.params.id), req.body.status);
+  const data = await service.updateStatus(req.params.id, req.body.status);
   res.json({ data });
 }

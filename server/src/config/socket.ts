@@ -6,7 +6,7 @@ import { env } from "./env";
 let io: Server;
 
 interface SocketData {
-  userId: number;
+  userId: string;
 }
 
 const allowedOrigins = env.CORS_ORIGINS.split(",").map((s: string) => s.trim());
@@ -20,7 +20,7 @@ export function initSocket(httpServer: HttpServer) {
     const token = socket.handshake.auth?.token;
     if (!token) return next(new Error("UNAUTHORIZED"));
     try {
-      const payload = jwt.verify(token, env.JWT_ACCESS_SECRET) as { userId: number; role: string };
+      const payload = jwt.verify(token, env.JWT_ACCESS_SECRET) as { userId: string; role: string };
       (socket as Socket & { data: SocketData }).data = { userId: payload.userId };
       next();
     } catch {

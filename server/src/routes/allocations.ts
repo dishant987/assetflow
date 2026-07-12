@@ -9,10 +9,11 @@ import { roleGuard } from "../middleware/roleGuard";
 const router = Router();
 
 const createSchema = z.object({
-  assetId: z.number().int().positive(),
-  employeeId: z.number().int().positive(),
-  departmentId: z.number().int().positive().optional(),
+  assetId: z.string().uuid(),
+  employeeId: z.string().uuid(),
+  departmentId: z.string().uuid().optional(),
   notes: z.string().optional(),
+  expectedReturnAt: z.string().optional(),
 });
 
 const returnSchema = z.object({

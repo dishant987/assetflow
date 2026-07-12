@@ -9,11 +9,11 @@ import api from "../lib/api";
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales: { "en-US": enUS } });
 
 type Booking = {
-  id: number;
-  assetId: number;
+  id: string;
+  assetId: string;
   assetTag: string;
   assetName: string;
-  bookedBy: number;
+  bookedBy: string;
   bookerName: string;
   purpose: string | null;
   slotStart: string;

@@ -7,7 +7,7 @@ export async function list(_req: Request, res: Response) {
 }
 
 export async function getById(req: Request, res: Response) {
-  const data = await service.getById(Number(req.params.id));
+  const data = await service.getById(req.params.id);
   res.json({ data });
 }
 
@@ -17,6 +17,6 @@ export async function create(req: Request, res: Response) {
 }
 
 export async function returnAsset(req: Request, res: Response) {
-  const data = await service.returnAsset(Number(req.params.id), req.body.notes);
+  const data = await service.returnAsset(req.params.id, req.body.notes);
   res.json({ data });
 }

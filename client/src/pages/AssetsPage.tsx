@@ -5,10 +5,10 @@ import type { Column } from "../components/ui";
 import api from "../lib/api";
 
 type Asset = {
-  id: number;
+  id: string;
   assetTag: string;
   name: string;
-  categoryId: number;
+  categoryId: string;
   categoryName: string;
   serialNumber: string | null;
   model: string | null;
@@ -23,7 +23,7 @@ type Asset = {
   createdAt: string;
 };
 
-type Category = { id: number; name: string; code: string };
+type Category = { id: string; name: string; code: string };
 
 export default function AssetsPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -121,7 +121,7 @@ function RegisterModal({ categories, onClose, onSaved }: { categories: Category[
         documents.push(up.data.data.url);
       }
       const notes = [form.condition ? `Condition: ${form.condition}` : "", form.notes].filter(Boolean).join("\n");
-      await api.post("/assets", { ...form, categoryId: Number(form.categoryId), notes, bookable: form.bookable ? 1 : 0, photoUrl, documents: documents.length > 0 ? documents : undefined });
+      await api.post("/assets", { ...form, categoryId: form.categoryId, notes, bookable: form.bookable ? 1 : 0, photoUrl, documents: documents.length > 0 ? documents : undefined });
       showToast("Asset registered", "success");
       onSaved();
     } catch (err: unknown) {

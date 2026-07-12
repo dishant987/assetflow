@@ -7,7 +7,7 @@ export async function list(_req: Request, res: Response) {
 }
 
 export async function getById(req: Request, res: Response) {
-  const data = await service.getById(Number(req.params.id));
+  const data = await service.getById(req.params.id);
   res.json({ data });
 }
 
@@ -17,11 +17,11 @@ export async function create(req: Request, res: Response) {
 }
 
 export async function update(req: Request, res: Response) {
-  const data = await service.update(Number(req.params.id), req.body);
+  const data = await service.update(req.params.id, req.body);
   res.json({ data });
 }
 
 export async function remove(req: Request, res: Response) {
-  await service.remove(Number(req.params.id));
+  await service.remove(req.params.id);
   res.json({ data: null });
 }

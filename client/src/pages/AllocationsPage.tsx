@@ -5,13 +5,13 @@ import api from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
 
 type Allocation = {
-  id: number;
-  assetId: number;
+  id: string;
+  assetId: string;
   assetTag: string;
   assetName: string;
-  employeeId: number;
+  employeeId: string;
   employeeName: string;
-  departmentId: number | null;
+  departmentId: string | null;
   departmentName: string | null;
   allocatedAt: string;
   returnedAt: string | null;
@@ -19,7 +19,7 @@ type Allocation = {
   notes: string | null;
 };
 
-type TransferReq = { id: number; assetId: number; assetTag: string; fromEmployeeName: string; toEmployeeName: string; status: string; requestedAt: string };
+type TransferReq = { id: string; assetId: string; assetTag: string; fromEmployeeName: string; toEmployeeName: string; status: string; requestedAt: string };
 
 export default function AllocationsPage() {
   const [allocations, setAllocations] = useState<Allocation[]>([]);
@@ -27,7 +27,7 @@ export default function AllocationsPage() {
   const [loading, setLoading] = useState(true);
   const [showAllocate, setShowAllocate] = useState(false);
   const [showReturn, setShowReturn] = useState<Allocation | null>(null);
-  const [showTransfer, setShowTransfer] = useState<{ assetTag: string; allocationId: number } | null>(null);
+  const [showTransfer, setShowTransfer] = useState<{ assetTag: string; allocationId: string } | null>(null);
   const [tab, setTab] = useState<"allocations" | "transfers">("allocations");
   const user = useAuthStore((s) => s.user);
 
@@ -76,7 +76,7 @@ export default function AllocationsPage() {
     },
   ];
 
-  async function handleTransferAction(id: number, action: "approve" | "reject") {
+  async function handleTransferAction(id: string, action: "approve" | "reject") {
     try { await api.post(`/transfers/${id}/${action}`); showToast(`Transfer ${action}d`, "success"); fetchAll(); } catch (err: unknown) { showToast(String(err), "error"); }
   }
 
@@ -104,10 +104,10 @@ export default function AllocationsPage() {
   );
 }
 
-function AllocateModal({ onClose, onDone, onTransfer }: { onClose: () => void; onDone: () => void; onTransfer?: (tag: string, allocId: number) => void }) {
-  const [form, setForm] = useState({ assetTag: "", employeeId: "", notes: "" });
+function AllocateModal({ onClose, onDone, onTransfer }: { onClose: () => void; onDone: () => void; onTransfer?: (tag: string, allocId: string) => void }) {
+  const [form, setForm] = useState({ assetTag: "", employeeId: "", notes: "", expectedReturnAt: "" });
   const [saving, setSaving] = useState(false);
-  const [conflict, setConflict] = useState<{ msg: string; allocationId: number } | null>(null);
+  const [conflict, setConflict] = useState<{ msg: string; allocationId: string } | null>(null);
 
   const handleAllocate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,13 +116,15 @@ function AllocateModal({ onClose, onDone, onTransfer }: { onClose: () => void; o
     try {
       const asset = await api.get(`/assets?search=${form.assetTag}`);
       if (!asset.data.data.length) { showToast("Asset not found", "error"); setSaving(false); return; }
-      await api.post("/allocations", { assetId: asset.data.data[0].id, employeeId: Number(form.employeeId), notes: form.notes });
+      const payload: Record<string, unknown> = { assetId: asset.data.data[0].id, employeeId: form.employeeId, notes: form.notes };
+      if (form.expectedReturnAt) payload.expectedReturnAt = form.expectedReturnAt;
+      await api.post("/allocations", payload);
       showToast("Allocated successfully", "success");
       onDone();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: { code: string; message: string; fields?: Record<string, string> } } } };
       if (e?.response?.data?.error?.code === "ASSET_ALREADY_ALLOCATED") {
-        setConflict({ msg: e.response.data.error.message, allocationId: Number(e.response.data.error.fields?.allocationId ?? 0) });
+        setConflict({ msg: e.response.data.error.message, allocationId: String(e.response.data.error.fields?.allocationId ?? "") });
       } else {
         showToast(e?.response?.data?.error?.message ?? "Allocation failed", "error");
       }
@@ -141,6 +143,7 @@ function AllocateModal({ onClose, onDone, onTransfer }: { onClose: () => void; o
           <Input label="Asset Tag" value={form.assetTag} onChange={(e) => setForm({ ...form, assetTag: e.target.value })} required placeholder="e.g. AF-0114" />
           <Input label="Employee ID" value={form.employeeId} onChange={(e) => setForm({ ...form, employeeId: e.target.value })} required />
           <Input label="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+          <Input label="Expected Return" type="date" value={form.expectedReturnAt} onChange={(e) => setForm({ ...form, expectedReturnAt: e.target.value })} />
           <div className="modal-footer" style={{ padding: 0, border: "none" }}>
             <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
             <Button type="submit" loading={saving}>Allocate</Button>
@@ -172,7 +175,7 @@ function ReturnModal({ allocation, onClose, onDone }: { allocation: Allocation; 
   );
 }
 
-function TransferModal({ assetTag, onClose, onDone }: { assetTag: string; allocationId: number; onClose: () => void; onDone: () => void }) {
+function TransferModal({ assetTag, onClose, onDone }: { assetTag: string; allocationId: string; onClose: () => void; onDone: () => void }) {
   const [form, setForm] = useState({ toEmployeeId: "", notes: "" });
   const [saving, setSaving] = useState(false);
 
@@ -184,7 +187,7 @@ function TransferModal({ assetTag, onClose, onDone }: { assetTag: string; alloca
       const alloc = await api.get(`/allocations`);
       const activeAlloc = alloc.data.data.find((a: Allocation) => a.assetTag === assetTag && a.status === "active");
       if (!activeAlloc) { showToast("No active allocation found", "error"); setSaving(false); return; }
-      await api.post("/transfers", { assetId: asset.data.data[0].id, fromEmployeeId: activeAlloc.employeeId, toEmployeeId: Number(form.toEmployeeId), notes: form.notes });
+      await api.post("/transfers", { assetId: asset.data.data[0].id, fromEmployeeId: activeAlloc.employeeId, toEmployeeId: form.toEmployeeId, notes: form.notes });
       showToast("Transfer requested", "success");
       onDone();
     } catch { showToast("Transfer failed", "error"); } finally { setSaving(false); }

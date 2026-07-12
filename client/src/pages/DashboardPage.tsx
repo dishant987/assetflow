@@ -16,7 +16,7 @@ type Kpi = {
 };
 
 type ReturnRow = {
-  id: number;
+  id: string;
   assetTag: string;
   assetName: string;
   employeeName: string;

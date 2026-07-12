@@ -1,6 +1,6 @@
 import { pgEnum } from "drizzle-orm/pg-core";
 
-export const userRole = pgEnum("user_role", ["admin", "manager", "employee"]);
+export const userRole = pgEnum("user_role", ["admin", "manager", "department_head", "employee"]);
 export const userStatus = pgEnum("user_status", ["active", "inactive", "suspended"]);
 
 export const assetStatus = pgEnum("asset_status", [
@@ -9,6 +9,7 @@ export const assetStatus = pgEnum("asset_status", [
   "under_maintenance",
   "retired",
   "lost",
+  "disposed",
 ]);
 
 export const allocationStatus = pgEnum("allocation_status", ["active", "returned"]);

@@ -12,6 +12,44 @@ import { sendMail } from "../config/mailer";
 import { otpEmail } from "../utils/emailTemplates";
 import { eq, and, isNull, sql, lte, desc } from "drizzle-orm";
 
+/* ───────── update profile ───────── */
+
+export async function updateProfile(userId: string, data: { firstName?: string; lastName?: string; phone?: string; designation?: string; avatarUrl?: string }) {
+  const fields: Record<string, string | null | Date> = {};
+  if (data.firstName !== undefined) fields.firstName = data.firstName;
+  if (data.lastName !== undefined) fields.lastName = data.lastName;
+  if (data.phone !== undefined) fields.phone = data.phone ?? null;
+  if (data.designation !== undefined) fields.designation = data.designation ?? null;
+  if (data.avatarUrl !== undefined) fields.avatarUrl = data.avatarUrl ?? null;
+  fields.updatedAt = new Date();
+
+  if (Object.keys(fields).length > 1) {
+    await db.update(employees).set(fields).where(eq(employees.id, userId));
+  }
+  return getSession(userId);
+}
+
+/* ───────── change password ───────── */
+
+export async function changePassword(userId: string, currentPassword: string, newPassword: string) {
+  const [emp] = await db.select().from(employees).where(eq(employees.id, userId)).limit(1);
+  if (!emp) throw new AppError("NOT_FOUND", "User not found.", 404);
+
+  const match = await bcrypt.compare(currentPassword, emp.password);
+  if (!match) {
+    throw new AppError("INVALID_PASSWORD", "Current password is incorrect.", 400);
+  }
+
+  const hash = await bcrypt.hash(newPassword, 10);
+  await db.update(employees).set({ password: hash }).where(eq(employees.id, userId));
+
+  // Revoke all refresh tokens — force re-login after password change
+  await db
+    .update(refreshTokens)
+    .set({ revokedAt: new Date() })
+    .where(and(eq(refreshTokens.employeeId, userId), isNull(refreshTokens.revokedAt)));
+}
+
 const ACCESS_EXPIRY = "15m";
 const REFRESH_EXPIRY_DAYS = 7;
 const REFRESH_EXPIRY_MS = REFRESH_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
@@ -20,15 +58,15 @@ const MAX_OTP_ATTEMPTS = 5;
 
 /* ───────── helpers ───────── */
 
-function signAccess(userId: number, role: string) {
+function signAccess(userId: string, role: string) {
   return jwt.sign({ userId, role }, env.JWT_ACCESS_SECRET, { expiresIn: ACCESS_EXPIRY });
 }
 
-function signRefresh(userId: number) {
+function signRefresh(userId: string) {
   return jwt.sign({ userId }, env.JWT_REFRESH_SECRET, { expiresIn: `${REFRESH_EXPIRY_DAYS}d` });
 }
 
-function signResetToken(userId: number) {
+function signResetToken(userId: string) {
   return jwt.sign({ userId, purpose: "password-reset" }, env.JWT_REFRESH_SECRET, {
     expiresIn: RESET_TOKEN_EXPIRY,
   });
@@ -123,9 +161,9 @@ export async function login(email: string, password: string) {
 /* ───────── refresh ───────── */
 
 export async function refresh(rawToken: string) {
-  let payload: { userId: number };
+  let payload: { userId: string };
   try {
-    payload = jwt.verify(rawToken, env.JWT_REFRESH_SECRET) as { userId: number };
+    payload = jwt.verify(rawToken, env.JWT_REFRESH_SECRET) as { userId: string };
   } catch {
     throw new AppError("INVALID_REFRESH_TOKEN", "Your session has expired. Please sign in again.", 401);
   }
@@ -162,7 +200,7 @@ export async function logout(rawToken: string) {
 
 /* ───────── session ───────── */
 
-export async function getSession(userId: number) {
+export async function getSession(userId: string) {
   const [emp] = await db.select().from(employees).where(eq(employees.id, userId)).limit(1);
   if (!emp) throw new AppError("NOT_FOUND", "User not found.", 404);
   return sanitise(emp);
@@ -236,9 +274,9 @@ export async function verifyOtp(email: string, otp: string) {
 /* ───────── reset-password ───────── */
 
 export async function resetPassword(resetToken: string, newPassword: string) {
-  let payload: { userId: number; purpose: string };
+  let payload: { userId: string; purpose: string };
   try {
-    payload = jwt.verify(resetToken, env.JWT_REFRESH_SECRET) as { userId: number; purpose: string };
+    payload = jwt.verify(resetToken, env.JWT_REFRESH_SECRET) as { userId: string; purpose: string };
   } catch {
     throw new AppError("INVALID_RESET_TOKEN", "This reset link has expired. Please start over.", 400);
   }

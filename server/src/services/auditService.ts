@@ -22,13 +22,16 @@ export async function listCycles() {
       conductedBy: auditCycles.conductedBy,
       notes: auditCycles.notes,
       createdAt: auditCycles.createdAt,
+      scopeDepartmentId: auditCycles.scopeDepartmentId,
+      scopeLocation: auditCycles.scopeLocation,
+      auditorIds: auditCycles.auditorIds,
       itemCount: sql<number>`(SELECT count(*) FROM audit_items WHERE audit_items.audit_cycle_id = ${auditCycles.id})`,
     })
     .from(auditCycles)
     .orderBy(auditCycles.createdAt);
 }
 
-export async function getCycleById(id: number) {
+export async function getCycleById(id: string) {
   const [cycle] = await db
     .select({
       id: auditCycles.id,
@@ -41,6 +44,9 @@ export async function getCycleById(id: number) {
       completedAt: auditCycles.completedAt,
       conductedBy: auditCycles.conductedBy,
       notes: auditCycles.notes,
+      scopeDepartmentId: auditCycles.scopeDepartmentId,
+      scopeLocation: auditCycles.scopeLocation,
+      auditorIds: auditCycles.auditorIds,
       createdAt: auditCycles.createdAt,
       updatedAt: auditCycles.updatedAt,
     })
@@ -72,12 +78,12 @@ export async function getCycleById(id: number) {
   return { ...cycle, items };
 }
 
-export async function createCycle(data: { title: string; description?: string; plannedStart?: string; plannedEnd?: string; conductedBy?: number }) {
-  const [cycle] = await db.insert(auditCycles).values(data).returning();
+export async function createCycle(data: { title: string; description?: string; plannedStart?: string; plannedEnd?: string; conductedBy?: string; scopeDepartmentId?: string; scopeLocation?: string; auditorIds?: string[] }) {
+  const [cycle] = await db.insert(auditCycles).values(data as never).returning();
   return cycle;
 }
 
-export async function populateItems(cycleId: number) {
+export async function populateItems(cycleId: string) {
   const all = await db
     .select({ id: assets.id, location: assets.location })
     .from(assets)
@@ -89,11 +95,11 @@ export async function populateItems(cycleId: number) {
   return all.length;
 }
 
-export async function updateCycleStatus(id: number, status: string) {
+export async function updateCycleStatus(id: string, status: string) {
   const cycle = await getCycleById(id);
   const updates: Record<string, unknown> = { status };
-  if (status === "in_progress") updates.startedAt = new Date().toISOString();
-  if (status === "completed") updates.completedAt = new Date().toISOString();
+  if (status === "in_progress") updates.startedAt = new Date();
+  if (status === "completed") updates.completedAt = new Date();
 
   if (status === "completed") {
     // Flip confirmed-missing assets to "lost"
@@ -132,7 +138,7 @@ export async function updateCycleStatus(id: number, status: string) {
   return { ...cycle, ...updates };
 }
 
-export async function updateItemVerdict(itemId: number, data: { verdict?: string; actualLocation?: string; discrepancy?: string; notes?: string }) {
+export async function updateItemVerdict(itemId: string, data: { verdict?: string; actualLocation?: string; discrepancy?: string; notes?: string }) {
   const [item] = await db
     .select({ id: auditItems.id, auditCycleId: auditItems.auditCycleId, status: auditCycles.status })
     .from(auditItems)
@@ -157,7 +163,7 @@ export async function updateItemVerdict(itemId: number, data: { verdict?: string
   return updated;
 }
 
-export async function discrepancyReport(cycleId: number) {
+export async function discrepancyReport(cycleId: string) {
   return db
     .select({
       id: auditItems.id,

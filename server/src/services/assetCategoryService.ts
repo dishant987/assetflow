@@ -7,7 +7,7 @@ export async function list() {
   return db.select().from(assetCategories).orderBy(assetCategories.name);
 }
 
-export async function getById(id: number) {
+export async function getById(id: string) {
   const [c] = await db.select().from(assetCategories).where(eq(assetCategories.id, id)).limit(1);
   if (!c) throw new AppError("NOT_FOUND", "Asset category not found.", 404);
   return c;
@@ -31,7 +31,7 @@ export async function create(data: {
 }
 
 export async function update(
-  id: number,
+  id: string,
   data: { name?: string; code?: string; description?: string; customFields?: unknown[]; isActive?: boolean },
 ) {
   await getById(id);
@@ -51,7 +51,7 @@ export async function update(
   return c;
 }
 
-export async function remove(id: number) {
+export async function remove(id: string) {
   await getById(id);
   await db.delete(assetCategories).where(eq(assetCategories.id, id));
 }

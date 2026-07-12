@@ -12,11 +12,11 @@ export async function create(req: Request, res: Response) {
 }
 
 export async function approve(req: Request, res: Response) {
-  const data = await service.approve(Number(req.params.id), req.user!.userId);
+  const data = await service.approve(req.params.id, req.user!.userId);
   res.json({ data });
 }
 
 export async function reject(req: Request, res: Response) {
-  const data = await service.reject(Number(req.params.id), req.user!.userId);
+  const data = await service.reject(req.params.id, req.user!.userId);
   res.json({ data });
 }

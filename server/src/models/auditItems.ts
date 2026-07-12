@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, varchar, text, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, timestamp, index } from "drizzle-orm/pg-core";
 import { auditItemVerdict } from "./enums";
 import { auditCycles } from "./auditCycles";
 import { assets } from "./assets";
@@ -6,11 +6,11 @@ import { assets } from "./assets";
 export const auditItems = pgTable(
   "audit_items",
   {
-    id: serial("id").primaryKey(),
-    auditCycleId: integer("audit_cycle_id")
+    id: uuid("id").defaultRandom().primaryKey(),
+    auditCycleId: uuid("audit_cycle_id")
       .notNull()
       .references(() => auditCycles.id),
-    assetId: integer("asset_id")
+    assetId: uuid("asset_id")
       .notNull()
       .references(() => assets.id),
     expectedLocation: varchar("expected_location", { length: 255 }),

@@ -21,6 +21,7 @@ import AuditDetailPage from "./pages/AuditDetailPage";
 import ReportsPage from "./pages/ReportsPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import ActivityLogPage from "./pages/ActivityLogPage";
+import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
 import { RequireAuth } from "./components/auth/RequireAuth";
 import { RequireRole } from "./components/auth/RequireRole";
@@ -65,6 +66,7 @@ function App() {
               </Route>
               <Route path="bookings" element={<BookingsPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
+              <Route path="profile" element={<ProfilePage />} />
             </Route>
           </Route>
           <Route path="*" element={<NotFound />} />

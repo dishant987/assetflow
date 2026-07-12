@@ -1,6 +1,6 @@
 import {
   pgTable,
-  serial,
+  uuid,
   varchar,
   text,
   integer,
@@ -16,11 +16,11 @@ import { assetCategories } from "./assetCategories";
 export const assets = pgTable(
   "assets",
   {
-    id: serial("id").primaryKey(),
+    id: uuid("id").defaultRandom().primaryKey(),
     assetTag: varchar("asset_tag", { length: 50 }).notNull().unique(),
     name: varchar("name", { length: 255 }).notNull(),
     description: text("description"),
-    categoryId: integer("category_id")
+    categoryId: uuid("category_id")
       .notNull()
       .references(() => assetCategories.id),
     serialNumber: varchar("serial_number", { length: 255 }),
@@ -34,6 +34,7 @@ export const assets = pgTable(
     documents: jsonb("documents").default([]),
     qrCodeValue: varchar("qr_code_value", { length: 255 }).notNull().unique(),
     location: varchar("location", { length: 255 }),
+    condition: varchar("condition", { length: 50 }),
     bookable: integer("bookable").default(0).notNull(),
     notes: text("notes"),
     createdAt: timestamp("created_at").defaultNow().notNull(),

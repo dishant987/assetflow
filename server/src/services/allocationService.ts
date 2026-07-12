@@ -31,7 +31,7 @@ export async function list() {
     .orderBy(allocations.allocatedAt);
 }
 
-export async function getById(id: number) {
+export async function getById(id: string) {
   const [row] = await db
     .select({
       id: allocations.id,
@@ -58,7 +58,7 @@ export async function getById(id: number) {
   return row;
 }
 
-export async function create(data: { assetId: number; employeeId: number; departmentId?: number; notes?: string }) {
+export async function create(data: { assetId: string; employeeId: string; departmentId?: string; notes?: string }) {
   // Check asset exists and is available
   const [asset] = await db.select().from(assets).where(eq(assets.id, data.assetId)).limit(1);
   if (!asset) throw new AppError("NOT_FOUND", "Asset not found.", 404);
@@ -108,7 +108,7 @@ export async function create(data: { assetId: number; employeeId: number; depart
   return alloc;
 }
 
-export async function returnAsset(id: number, notes?: string) {
+export async function returnAsset(id: string, notes?: string) {
   const alloc = await getById(id);
   if (alloc.status !== "active") throw new AppError("ALREADY_RETURNED", "This allocation has already been returned.", 400);
 
@@ -124,7 +124,7 @@ export async function returnAsset(id: number, notes?: string) {
   return updated;
 }
 
-export async function getActiveForAsset(assetId: number) {
+export async function getActiveForAsset(assetId: string) {
   const [row] = await db
     .select({
       id: allocations.id,

@@ -31,7 +31,7 @@ export async function list() {
     .orderBy(maintenanceRequests.createdAt);
 }
 
-export async function getById(id: number) {
+export async function getById(id: string) {
   const [row] = await db
     .select({
       id: maintenanceRequests.id,
@@ -60,8 +60,8 @@ export async function getById(id: number) {
 }
 
 export async function create(data: {
-  assetId: number;
-  requestedBy: number;
+  assetId: string;
+  requestedBy: string;
   issueDescription: string;
   priority?: string;
   photoUrl?: string;
@@ -101,7 +101,7 @@ const validTransitions: Record<string, string[]> = {
   cancelled: [],
 };
 
-export async function updateStatus(id: number, status: string, assignedTo?: number) {
+export async function updateStatus(id: string, status: string, assignedTo?: string) {
   const existing = await getById(id);
 
   const allowed = validTransitions[existing.status] ?? [];

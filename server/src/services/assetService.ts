@@ -11,7 +11,7 @@ import { eq, like, and, or, sql } from "drizzle-orm";
 type CreateAsset = {
   name: string;
   description?: string;
-  categoryId: number;
+  categoryId: string;
   serialNumber?: string;
   model?: string;
   manufacturer?: string;
@@ -21,11 +21,12 @@ type CreateAsset = {
   photoUrl?: string;
   documents?: string[];
   location?: string;
+  condition?: string;
   bookable?: number;
   notes?: string;
 };
 
-export async function list(opts: { search?: string; categoryId?: number; status?: string; location?: string }) {
+export async function list(opts: { search?: string; categoryId?: string; status?: string; location?: string }) {
   const conditions = [];
   if (opts.search) {
     conditions.push(
@@ -68,7 +69,7 @@ export async function list(opts: { search?: string; categoryId?: number; status?
     .orderBy(assets.createdAt);
 }
 
-export async function getById(id: number) {
+export async function getById(id: string) {
   const [row] = await db
     .select({
       id: assets.id,
@@ -137,6 +138,7 @@ export async function create(data: CreateAsset) {
       documents: (data.documents ?? []) as unknown as never,
       qrCodeValue: tag,
       location: data.location ?? null,
+      condition: data.condition ?? null,
       bookable: data.bookable ?? 0,
       notes: data.notes ?? null,
     })
@@ -145,7 +147,7 @@ export async function create(data: CreateAsset) {
   return { ...asset, qrCodeValue: tag };
 }
 
-export async function update(id: number, data: Partial<CreateAsset>) {
+export async function update(id: string, data: Partial<CreateAsset>) {
   await getById(id);
 
   if (data.serialNumber) {
@@ -161,7 +163,7 @@ export async function update(id: number, data: Partial<CreateAsset>) {
   return updated;
 }
 
-export async function getAllocationHistory(assetId: number) {
+export async function getAllocationHistory(assetId: string) {
   return db
     .select({
       id: allocations.id,
@@ -178,7 +180,7 @@ export async function getAllocationHistory(assetId: number) {
     .orderBy(allocations.allocatedAt);
 }
 
-export async function getMaintenanceHistory(assetId: number) {
+export async function getMaintenanceHistory(assetId: string) {
   return db
     .select()
     .from(maintenanceRequests)

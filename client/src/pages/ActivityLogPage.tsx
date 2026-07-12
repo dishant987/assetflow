@@ -3,14 +3,14 @@ import api from "../lib/api";
 import { Card, Table, Input, Select, showToast, PageLoader, EmptyState } from "../components/ui";
 import type { Column } from "../components/ui";
 
-type Employee = { id: number; firstName: string; lastName: string };
+type Employee = { id: string; firstName: string; lastName: string };
 
 type LogEntry = {
-  id: number;
-  employeeId: number | null;
+  id: string;
+  employeeId: string | null;
   action: string;
   entityType: string;
-  entityId: number | null;
+  entityId: string | null;
   details: Record<string, unknown> | null;
   ipAddress: string | null;
   createdAt: string;

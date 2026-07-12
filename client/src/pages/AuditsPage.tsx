@@ -4,10 +4,10 @@ import { Button, Input, Select, Table, Card, StatusBadge, showToast, Modal, Page
 import type { Column } from "../components/ui";
 import api from "../lib/api";
 
-type Employee = { id: number; firstName: string; lastName: string };
+type Employee = { id: string; firstName: string; lastName: string };
 
 type Cycle = {
-  id: number;
+  id: string;
   title: string;
   description: string | null;
   plannedStart: string | null;
@@ -15,7 +15,7 @@ type Cycle = {
   status: string;
   startedAt: string | null;
   completedAt: string | null;
-  conductedBy: number | null;
+  conductedBy: string | null;
   notes: string | null;
   createdAt: string;
   itemCount: number;
@@ -57,7 +57,7 @@ export default function AuditsPage() {
 }
 
 function CreateModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
-  const [form, setForm] = useState({ title: "", description: "", plannedStart: "", plannedEnd: "", conductedBy: "" });
+  const [form, setForm] = useState({ title: "", description: "", plannedStart: "", plannedEnd: "", conductedBy: "", scopeDepartmentId: "", scopeLocation: "", auditorIdsStr: "" });
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -72,7 +72,11 @@ function CreateModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
       const payload: Record<string, unknown> = { title: form.title, description: form.description };
       if (form.plannedStart) payload.plannedStart = form.plannedStart;
       if (form.plannedEnd) payload.plannedEnd = form.plannedEnd;
-      if (form.conductedBy) payload.conductedBy = Number(form.conductedBy);
+      if (form.conductedBy) payload.conductedBy = form.conductedBy;
+      if (form.scopeDepartmentId) payload.scopeDepartmentId = form.scopeDepartmentId;
+      if (form.scopeLocation) payload.scopeLocation = form.scopeLocation;
+      const auditorIds = form.auditorIdsStr ? form.auditorIdsStr.split(",").map(s => s.trim()).filter(Boolean) : [];
+      if (auditorIds.length) payload.auditorIds = auditorIds;
       const r = await api.post("/audits", payload);
       await api.post(`/audits/${r.data.data.id}/populate`);
       showToast("Audit created with all active assets", "success");
@@ -91,6 +95,9 @@ function CreateModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
         <Input label="Planned Start" type="date" value={form.plannedStart} onChange={(e) => setForm({ ...form, plannedStart: e.target.value })} />
         <Input label="Planned End" type="date" value={form.plannedEnd} onChange={(e) => setForm({ ...form, plannedEnd: e.target.value })} />
         <Select label="Assign Auditor" value={form.conductedBy} onChange={(e) => setForm({ ...form, conductedBy: e.target.value })} placeholder="— Select —" options={employees.map((e) => ({ value: String(e.id), label: `${e.firstName} ${e.lastName}` }))} />
+        <Input label="Scope Department" value={form.scopeDepartmentId} onChange={(e) => setForm({...form, scopeDepartmentId: e.target.value})} placeholder="Department ID" />
+        <Input label="Scope Location" value={form.scopeLocation} onChange={(e) => setForm({...form, scopeLocation: e.target.value})} placeholder="e.g. Floor 2, Building A" />
+        <Input label="Auditor IDs (comma-separated)" value={form.auditorIdsStr} onChange={(e) => setForm({...form, auditorIdsStr: e.target.value})} placeholder="uuid1, uuid2, uuid3" />
         <div className="modal-footer" style={{ padding: 0, border: "none" }}>
           <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={saving}>Create & Populate</Button>

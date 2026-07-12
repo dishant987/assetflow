@@ -7,7 +7,7 @@ export async function list() {
   return db.select().from(departments).orderBy(departments.name);
 }
 
-export async function getById(id: number) {
+export async function getById(id: string) {
   const [d] = await db.select().from(departments).where(eq(departments.id, id)).limit(1);
   if (!d) throw new AppError("NOT_FOUND", "Department not found.", 404);
   return d;
@@ -17,8 +17,8 @@ export async function create(data: {
   name: string;
   code: string;
   description?: string;
-  parentId?: number | null;
-  headEmployeeId?: number;
+  parentId?: string | null;
+  headEmployeeId?: string;
 }) {
   const [existing] = await db
     .select({ id: departments.id })
@@ -32,8 +32,8 @@ export async function create(data: {
 }
 
 export async function update(
-  id: number,
-  data: { name?: string; code?: string; description?: string; parentId?: number | null; headEmployeeId?: number | null },
+  id: string,
+  data: { name?: string; code?: string; description?: string; parentId?: string | null; headEmployeeId?: string | null },
 ) {
   await getById(id);
 
@@ -52,7 +52,7 @@ export async function update(
   return d;
 }
 
-export async function toggleStatus(id: number) {
+export async function toggleStatus(id: string) {
   const d = await getById(id);
   const [updated] = await db
     .update(departments)
@@ -62,7 +62,7 @@ export async function toggleStatus(id: number) {
   return updated;
 }
 
-export async function remove(id: number) {
+export async function remove(id: string) {
   await getById(id);
   await db.delete(departments).where(eq(departments.id, id));
 }

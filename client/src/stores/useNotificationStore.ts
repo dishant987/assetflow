@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
 export type Notification = {
-  id: number;
+  id: string;
   title: string;
   message: string;
   isRead: boolean;

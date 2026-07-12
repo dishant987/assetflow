@@ -4,7 +4,7 @@ import { eq, and, desc, sql } from "drizzle-orm";
 import { getIO } from "../config/socket";
 
 export async function create(data: {
-  employeeId: number;
+  employeeId: string;
   title: string;
   message: string;
   type: string;
@@ -20,7 +20,7 @@ export async function create(data: {
   return n;
 }
 
-export async function list(employeeId: number) {
+export async function list(employeeId: string) {
   return db
     .select()
     .from(notifications)
@@ -28,7 +28,7 @@ export async function list(employeeId: number) {
     .orderBy(desc(notifications.createdAt));
 }
 
-export async function unreadCount(employeeId: number) {
+export async function unreadCount(employeeId: string) {
   const [{ count }] = await db
     .select({ count: sql<number>`count(*)` })
     .from(notifications)
@@ -36,14 +36,14 @@ export async function unreadCount(employeeId: number) {
   return Number(count);
 }
 
-export async function markAsRead(id: number, employeeId: number) {
+export async function markAsRead(id: string, employeeId: string) {
   await db
     .update(notifications)
     .set({ isRead: true })
     .where(and(eq(notifications.id, id), eq(notifications.employeeId, employeeId)));
 }
 
-export async function markAllRead(employeeId: number) {
+export async function markAllRead(employeeId: string) {
   await db
     .update(notifications)
     .set({ isRead: true })

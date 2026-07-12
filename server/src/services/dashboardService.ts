@@ -43,7 +43,7 @@ export async function triggerOverdueAlerts() {
         SELECT 1 FROM notifications n
         WHERE n.type = 'overdue_return' AND n.link = '/allocations/' || al.id
       )
-  `).then((r) => r.rows as { id: number; employee_id: number }[]);
+  `).then((r) => r.rows as { id: string; employee_id: string }[]);
 
   for (const o of overdue) {
     await notificationService.create({
@@ -73,16 +73,22 @@ export async function upcomingReturns(limit = 10) {
 }
 
 export async function overdueReturns() {
-  // ponytail: assets allocated > 30 days without return as "overdue"
   return db.execute(sql`
     SELECT al.id, a.asset_tag, a.name AS asset_name,
       concat(e.first_name, ' ', e.last_name) AS employee_name,
       al.allocated_at,
-      (now() - al.allocated_at)::text AS duration
+      CASE
+        WHEN al.expected_return_at IS NOT NULL THEN (now() - al.expected_return_at)::text
+        ELSE (now() - al.allocated_at)::text
+      END AS duration
     FROM allocations al
     JOIN assets a ON a.id = al.asset_id
     JOIN employees e ON e.id = al.employee_id
-    WHERE al.status = 'active' AND al.allocated_at < now() - interval '30 days'
+    WHERE al.status = 'active'
+      AND (
+        (al.expected_return_at IS NOT NULL AND al.expected_return_at < now())
+        OR (al.expected_return_at IS NULL AND al.allocated_at < now() - interval '30 days')
+      )
     ORDER BY al.allocated_at ASC
   `).then((r) => r.rows);
 }

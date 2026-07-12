@@ -24,7 +24,7 @@ export async function list() {
   return rows;
 }
 
-export async function getById(id: number) {
+export async function getById(id: string) {
   const [e] = await db
     .select({
       id: employees.id,
@@ -47,7 +47,7 @@ export async function getById(id: number) {
   return e;
 }
 
-export async function promote(id: number, role: "manager" | "admin", currentUserId: number) {
+export async function promote(id: string, role: "manager" | "department_head" | "admin", currentUserId: string) {
   if (id === currentUserId) {
     throw new AppError(
       "SELF_ROLE_ELEVATION_BLOCKED",
@@ -66,7 +66,7 @@ export async function promote(id: number, role: "manager" | "admin", currentUser
   return rest;
 }
 
-export async function updateStatus(id: number, status: "active" | "inactive" | "suspended") {
+export async function updateStatus(id: string, status: "active" | "inactive" | "suspended") {
   await getById(id);
   const [updated] = await db.update(employees).set({ status }).where(eq(employees.id, id)).returning();
 

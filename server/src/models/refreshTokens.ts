@@ -1,9 +1,9 @@
-import { pgTable, serial, integer, varchar, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, timestamp } from "drizzle-orm/pg-core";
 import { employees } from "./employees";
 
 export const refreshTokens = pgTable("refresh_tokens", {
-  id: serial("id").primaryKey(),
-  employeeId: integer("employee_id")
+  id: uuid("id").defaultRandom().primaryKey(),
+  employeeId: uuid("employee_id")
     .notNull()
     .references(() => employees.id),
   tokenHash: varchar("token_hash", { length: 255 }).notNull(),

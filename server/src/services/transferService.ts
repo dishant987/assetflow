@@ -33,9 +33,9 @@ export async function list() {
 }
 
 export async function create(data: {
-  assetId: number;
-  fromEmployeeId: number;
-  toEmployeeId: number;
+  assetId: string;
+  fromEmployeeId: string;
+  toEmployeeId: string;
   notes?: string;
 }) {
   const [req] = await db.insert(transferRequests).values(data).returning();
@@ -51,7 +51,7 @@ export async function create(data: {
   return req;
 }
 
-export async function approve(id: number, approvedBy: number) {
+export async function approve(id: string, approvedBy: string) {
   const [req] = await db
     .select()
     .from(transferRequests)
@@ -96,7 +96,7 @@ export async function approve(id: number, approvedBy: number) {
   return updated;
 }
 
-export async function reject(id: number, approvedBy: number) {
+export async function reject(id: string, approvedBy: string) {
   const [req] = await db
     .select()
     .from(transferRequests)

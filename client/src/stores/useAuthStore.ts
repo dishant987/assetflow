@@ -4,16 +4,17 @@ import api from "../lib/api";
 import { connectSocket, disconnectSocket } from "../lib/socketClient";
 
 export type User = {
-  id: number;
+  id: string;
   employeeCode: string;
   firstName: string;
   lastName: string;
   email: string;
-  role: "admin" | "manager" | "employee";
+  role: "admin" | "manager" | "department_head" | "employee";
   status: string;
-  departmentId: number | null;
+  departmentId: string | null;
   phone: string | null;
   designation: string | null;
+  avatarUrl: string | null;
   joinedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -28,6 +29,7 @@ type Actions = {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   fetchSession: () => Promise<void>;
+  setUser: (user: User) => void;
 };
 
 export const useAuthStore = create<State & Actions>()(
@@ -53,6 +55,7 @@ export const useAuthStore = create<State & Actions>()(
           set({ user: null, accessToken: null });
         }
       },
+      setUser: (user) => set({ user }),
     }),
     { name: "assetflow-auth" },
   ),

@@ -7,7 +7,7 @@ export async function list(_req: Request, res: Response) {
 }
 
 export async function getById(req: Request, res: Response) {
-  const data = await service.getById(Number(req.params.id));
+  const data = await service.getById(req.params.id);
   res.json({ data });
 }
 
@@ -17,6 +17,6 @@ export async function create(req: Request, res: Response) {
 }
 
 export async function updateStatus(req: Request, res: Response) {
-  const data = await service.updateStatus(Number(req.params.id), req.body.status, req.body.assignedTo);
+  const data = await service.updateStatus(req.params.id, req.body.status, req.body.assignedTo);
   res.json({ data });
 }
