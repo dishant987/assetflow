@@ -12,8 +12,8 @@ const createSchema = z.object({
   name: z.string().min(1, "Name is required"),
   code: z.string().min(1, "Code is required"),
   description: z.string().optional(),
-  parentId: z.number().int().positive().nullable().optional(),
-  headEmployeeId: z.number().int().positive().optional(),
+  parentId: z.string().uuid().nullable().optional(),
+  headEmployeeId: z.string().uuid().nullable().optional(),
 });
 
 const updateSchema = createSchema.partial();

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Sidebar, Topbar, Breadcrumb, Button, showToast } from "../ui";
+import { Sidebar, Topbar, Breadcrumb, Button, showToast, Modal } from "../ui";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useNotificationStore } from "../../stores/useNotificationStore";
 import { getSocket } from "../../lib/socketClient";
@@ -63,6 +63,7 @@ export function AppLayout() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const unread = useNotificationStore((s) => s.unread);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const { setItems, setUnread, addNotification } = useNotificationStore();
 
@@ -165,7 +166,7 @@ export function AppLayout() {
                       Profile
                     </button>
                     <button
-                      onClick={() => { setMenuOpen(false); logout(); showToast("Signed out", "info"); nav("/login"); }}
+                      onClick={() => { setMenuOpen(false); setShowLogoutModal(true); }}
                       style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 12px", fontSize: 13, background: "none", border: "none", cursor: "pointer", color: "var(--color-error)" }}
                       onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-primary-light)")}
                       onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
@@ -185,6 +186,34 @@ export function AppLayout() {
           <Outlet />
         </div>
       </div>
+
+      <Modal
+        open={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        title="Confirm Sign Out"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setShowLogoutModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => {
+                setShowLogoutModal(false);
+                logout();
+                showToast("Signed out successfully", "info");
+                nav("/login");
+              }}
+            >
+              Sign Out
+            </Button>
+          </>
+        }
+      >
+        <p style={{ color: "var(--color-text-secondary)", fontSize: "14px", lineHeight: "1.5" }}>
+          Are you sure you want to sign out of AssetFlow? Any unsaved changes may be lost.
+        </p>
+      </Modal>
     </div>
   );
 }

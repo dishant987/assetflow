@@ -8,7 +8,7 @@ import { authGuard } from "../middleware/authGuard";
 const router = Router();
 
 const createSchema = z.object({
-  assetId: z.number().int().positive(),
+  assetId: z.string().uuid(),
   purpose: z.string().optional(),
   slotStart: z.string().min(1, "Start time is required"),
   slotEnd: z.string().min(1, "End time is required"),

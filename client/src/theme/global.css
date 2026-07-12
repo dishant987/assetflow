@@ -61,6 +61,8 @@ body {
 .btn-lg { padding: 10px 20px; font-size: 15px; }
 .btn-primary { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
 .btn-primary:hover:not(:disabled) { background: var(--color-primary-hover); }
+.btn-danger { background: var(--color-error); color: #fff; border-color: var(--color-error); }
+.btn-danger:hover:not(:disabled) { background: #B91C1C; }
 .btn-secondary { background: #fff; color: var(--color-text); border-color: var(--color-border); }
 .btn-secondary:hover:not(:disabled) { background: #F9FAFB; border-color: #C4C7D0; }
 .btn-ghost { background: transparent; color: var(--color-text-secondary); border-color: transparent; }

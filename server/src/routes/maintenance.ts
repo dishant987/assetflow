@@ -9,7 +9,7 @@ import { roleGuard } from "../middleware/roleGuard";
 const router = Router();
 
 const createSchema = z.object({
-  assetId: z.number().int().positive(),
+  assetId: z.string().uuid(),
   issueDescription: z.string().min(1, "Describe the issue"),
   priority: z.enum(["low", "medium", "high", "critical"]).optional(),
   photoUrl: z.string().optional(),
@@ -17,7 +17,7 @@ const createSchema = z.object({
 
 const updateStatusSchema = z.object({
   status: z.enum(["approved", "in_progress", "completed", "cancelled"]),
-  assignedTo: z.number().int().positive().optional(),
+  assignedTo: z.string().uuid().optional(),
 });
 
 router.use(authGuard);

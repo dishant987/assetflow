@@ -18,6 +18,8 @@ export default function OrganizationPage() {
   const [showCatModal, setShowCatModal] = useState(false);
   const [editCat, setEditCat] = useState<Category | null>(null);
   const [showPromote, setShowPromote] = useState<Employee | null>(null);
+  const [deleteDept, setDeleteDept] = useState<Department | null>(null);
+  const [deleteCat, setDeleteCat] = useState<Category | null>(null);
 
   const fetchDepts = async () => { try { const r = await api.get("/departments"); setDepartments(r.data.data); } catch { showToast("Failed to load departments", "error"); } };
   const fetchCats = async () => { try { const r = await api.get("/asset-categories"); setCategories(r.data.data); } catch { showToast("Failed to load categories", "error"); } };
@@ -25,9 +27,9 @@ export default function OrganizationPage() {
 
   useEffect(() => {
     setLoading(true);
-    if (tab === "departments") { fetchDepts().finally(() => setLoading(false)); }
-    else if (tab === "categories") { fetchCats().finally(() => setLoading(false)); }
-    else { fetchEmps().finally(() => setLoading(false)); }
+    const tasks = [fetchDepts(), fetchEmps()];
+    if (tab === "categories") tasks.push(fetchCats());
+    Promise.all(tasks).finally(() => setLoading(false));
   }, [tab]);
 
   const deptCols: Column<Department>[] = [
@@ -39,7 +41,7 @@ export default function OrganizationPage() {
     { key: "actions", label: "", render: (d) => (
       <div className="flex gap-xs">
         <Button size="sm" variant="ghost" onClick={() => { setEditDept(d); setShowDeptModal(true); }}>Edit</Button>
-        <Button size="sm" variant="ghost" onClick={async () => { if (confirm("Delete department?")) { try { await api.delete(`/departments/${d.id}`); showToast("Deleted", "success"); fetchDepts(); } catch { showToast("Failed", "error"); } } }}>Delete</Button>
+        <Button size="sm" variant="ghost" onClick={() => setDeleteDept(d)}>Delete</Button>
       </div>
     )},
   ];
@@ -52,7 +54,7 @@ export default function OrganizationPage() {
     { key: "actions", label: "", render: (c) => (
       <div className="flex gap-xs">
         <Button size="sm" variant="ghost" onClick={() => { setEditCat(c); setShowCatModal(true); }}>Edit</Button>
-        <Button size="sm" variant="ghost" onClick={async () => { if (confirm("Delete category?")) { try { await api.delete(`/asset-categories/${c.id}`); showToast("Deleted", "success"); fetchCats(); } catch { showToast("Failed", "error"); } } }}>Delete</Button>
+        <Button size="sm" variant="ghost" onClick={() => setDeleteCat(c)}>Delete</Button>
       </div>
     )},
   ];
@@ -96,6 +98,72 @@ export default function OrganizationPage() {
       {showDeptModal && <DeptModal edit={editDept} onClose={() => { setShowDeptModal(false); setEditDept(null); }} onDone={() => { setShowDeptModal(false); setEditDept(null); fetchDepts(); }} departments={departments} employees={employees} />}
       {showCatModal && <CatModal edit={editCat} onClose={() => { setShowCatModal(false); setEditCat(null); }} onDone={() => { setShowCatModal(false); setEditCat(null); fetchCats(); }} />}
       {showPromote && <PromoteModal employee={showPromote} onClose={() => setShowPromote(null)} onDone={() => { setShowPromote(null); fetchEmps(); }} />}
+
+      {deleteDept && (
+        <Modal
+          open={!!deleteDept}
+          onClose={() => setDeleteDept(null)}
+          title="Delete Department"
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setDeleteDept(null)}>Cancel</Button>
+              <Button
+                variant="danger"
+                onClick={async () => {
+                  try {
+                    await api.delete(`/departments/${deleteDept.id}`);
+                    showToast("Deleted", "success");
+                    fetchDepts();
+                  } catch {
+                    showToast("Failed to delete department", "error");
+                  } finally {
+                    setDeleteDept(null);
+                  }
+                }}
+              >
+                Delete
+              </Button>
+            </>
+          }
+        >
+          <p style={{ color: "var(--color-text-secondary)", fontSize: "14px", lineHeight: "1.5" }}>
+            Are you sure you want to delete the department <strong>{deleteDept.name}</strong>? This action cannot be undone.
+          </p>
+        </Modal>
+      )}
+
+      {deleteCat && (
+        <Modal
+          open={!!deleteCat}
+          onClose={() => setDeleteCat(null)}
+          title="Delete Category"
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setDeleteCat(null)}>Cancel</Button>
+              <Button
+                variant="danger"
+                onClick={async () => {
+                  try {
+                    await api.delete(`/asset-categories/${deleteCat.id}`);
+                    showToast("Deleted", "success");
+                    fetchCats();
+                  } catch {
+                    showToast("Failed to delete category", "error");
+                  } finally {
+                    setDeleteCat(null);
+                  }
+                }}
+              >
+                Delete
+              </Button>
+            </>
+          }
+        >
+          <p style={{ color: "var(--color-text-secondary)", fontSize: "14px", lineHeight: "1.5" }}>
+            Are you sure you want to delete the category <strong>{deleteCat.name}</strong>? This action cannot be undone.
+          </p>
+        </Modal>
+      )}
     </div>
   );
 }
