@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { Button, Input, Select, Table, Card, StatusBadge, showToast, Modal, PageLoader } from "../components/ui";
 import type { Column } from "../components/ui";
 import api from "../lib/api";
+import { isAssetManager, isDepartmentHead } from "../lib/roles";
 import { useAuthStore } from "../stores/useAuthStore";
 
 type AuditItem = {
@@ -122,7 +123,7 @@ export default function AuditDetailPage() {
     } catch { showToast("Failed", "error"); }
   };
 
-  const isAdminMgr = role === "admin" || role === "manager" || role === "department_head";
+  const isAdminMgr = isAssetManager(role);
   const isActive = !cycle?.status?.match(/completed|cancelled/);
 
   const cols: Column<AuditItem>[] = [

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Button, Input, Table, Card, StatusBadge, Modal, showToast, PageLoader, EmptyState, Select } from "../components/ui";
 import type { Column } from "../components/ui";
 import api from "../lib/api";
+import { isAssetManager, isDepartmentHead } from "../lib/roles";
 import { useAuthStore } from "../stores/useAuthStore";
 
 type Allocation = {
@@ -71,7 +72,7 @@ export default function AllocationsPage() {
       key: "actions", label: "", render: (a) =>
         a.status === "active" ? (
           <div className="flex gap-xs">
-            {(user?.role === "admin" || user?.role === "manager") && (
+            {isAssetManager(user?.role) && (
               <Button variant="ghost" size="sm" onClick={() => setShowReturn(a)}>Return</Button>
             )}
             <Button variant="ghost" size="sm" onClick={() => setShowTransfer({ assetTag: a.assetTag, allocationId: a.id })}>Transfer</Button>
@@ -88,7 +89,7 @@ export default function AllocationsPage() {
     { key: "requestedAt", label: "Requested", render: (t) => new Date(t.requestedAt).toLocaleString() },
     {
       key: "actions", label: "", render: (t) =>
-        t.status === "pending" && (user?.role === "admin" || user?.role === "manager" || user?.role === "department_head") ? (
+        t.status === "pending" && (isAssetManager(user?.role) || isDepartmentHead(user?.role)) ? (
           <div className="flex gap-xs">
             <Button variant="ghost" size="sm" onClick={() => setShowTransferAction({ req: t, action: "approve" })}>Approve</Button>
             <Button variant="ghost" size="sm" onClick={() => setShowTransferAction({ req: t, action: "reject" })}>Reject</Button>

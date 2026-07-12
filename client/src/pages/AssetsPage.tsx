@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Button, Input, Select, Table, Card, StatusBadge, showToast, Modal, PageLoader, EmptyState, Badge } from "../components/ui";
 import type { Column } from "../components/ui";
 import api from "../lib/api";
+import { isAssetManager } from "../lib/roles";
 import { useAuthStore } from "../stores/useAuthStore";
 
 type Asset = {
@@ -74,7 +75,7 @@ export default function AssetsPage() {
     { key: "location", label: "Location" },
     { key: "serialNumber", label: "Serial #" },
     { key: "bookable", label: "Bookable", render: (a) => a.bookable ? <Badge variant="info">Yes</Badge> : <Badge variant="muted">No</Badge> },
-    ...(user?.role === "admin" || user?.role === "manager" ? [{ key: "actions", label: "", render: (a: Asset) => <Button size="sm" variant="ghost" onClick={() => setEditAsset(a)}>Edit</Button> }] : []),
+    ...(isAssetManager(user?.role) ? [{ key: "actions", label: "", render: (a: Asset) => <Button size="sm" variant="ghost" onClick={() => setEditAsset(a)}>Edit</Button> }] : []),
   ];
 
   return (
@@ -89,7 +90,7 @@ export default function AssetsPage() {
         <div style={{ minWidth: 140 }}>
           <Select label="Category" options={[{ value: "", label: "All" }, ...categories.map((c) => ({ value: String(c.id), label: c.name }))]} value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} />
         </div>
-        <Button onClick={() => setShowRegister(true)}>+ Register Asset</Button>
+        {isAssetManager(user?.role) && <Button onClick={() => setShowRegister(true)}>+ Register Asset</Button>}
       </div>
 
       <Card>

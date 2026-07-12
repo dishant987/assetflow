@@ -5,6 +5,7 @@ import { useAuthStore } from "../../stores/useAuthStore";
 import { useNotificationStore } from "../../stores/useNotificationStore";
 import { getSocket } from "../../lib/socketClient";
 import api from "../../lib/api";
+import { normalizeRole } from "../../lib/roles";
 
 const navByRole: Record<string, { label: string; path: string }[]> = {
   admin: [
@@ -34,8 +35,6 @@ const navByRole: Record<string, { label: string; path: string }[]> = {
     { label: "Assets", path: "/assets" },
     { label: "Allocations", path: "/allocations" },
     { label: "Bookings", path: "/bookings" },
-    { label: "Audits", path: "/audits" },
-    { label: "Reports", path: "/reports" },
     { label: "Notifications", path: "/notifications" },
   ],
   employee: [
@@ -112,7 +111,7 @@ export function AppLayout() {
     return () => document.removeEventListener("mousedown", close);
   }, [menuOpen]);
 
-  const role = user?.role ?? "employee";
+  const role = normalizeRole(user?.role);
   const items = (navByRole[role] ?? navByRole.employee).map((n) => ({
     label: n.label,
     href: n.path,

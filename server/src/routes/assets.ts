@@ -4,6 +4,7 @@ import * as ctrl from "../controllers/assetController";
 import { validate } from "../middleware/validate";
 import { asyncHandler } from "../utils/asyncHandler";
 import { authGuard } from "../middleware/authGuard";
+import { roleGuard } from "../middleware/roleGuard";
 
 const router = Router();
 
@@ -32,8 +33,8 @@ router.use(authGuard);
 
 router.get("/", asyncHandler(ctrl.list));
 router.get("/:id", asyncHandler(ctrl.getById));
-router.post("/", validate(createSchema), asyncHandler(ctrl.create));
-router.patch("/:id", validate(updateSchema), asyncHandler(ctrl.update));
+router.post("/", roleGuard("admin", "manager"), validate(createSchema), asyncHandler(ctrl.create));
+router.patch("/:id", roleGuard("admin", "manager"), validate(updateSchema), asyncHandler(ctrl.update));
 router.get("/:id/allocations", asyncHandler(ctrl.getAllocationHistory));
 router.get("/:id/maintenance", asyncHandler(ctrl.getMaintenanceHistory));
 

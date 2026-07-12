@@ -7,12 +7,17 @@ export async function list(req: Request, res: Response) {
     categoryId: req.query.categoryId as string | undefined,
     status: req.query.status as string,
     location: req.query.location as string,
+    role: req.user?.role,
+    userId: req.user?.userId,
   });
   res.json({ data });
 }
 
 export async function getById(req: Request, res: Response) {
-  const data = await service.getById(req.params.id);
+  const data = await service.getById(req.params.id, {
+    role: req.user?.role,
+    userId: req.user?.userId,
+  });
   res.json({ data });
 }
 

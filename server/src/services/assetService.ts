@@ -34,8 +34,18 @@ type CreateAsset = {
     | "damaged";
 };
 
-export async function list(opts: { search?: string; categoryId?: string; status?: string; location?: string }) {
+export async function list(opts: { search?: string; categoryId?: string; status?: string; location?: string; role?: string; userId?: string }) {
   const conditions = [];
+  let departmentId: string | null = null;
+
+  if (opts?.role === "department_head" && opts?.userId) {
+    const [emp] = await db.select({ departmentId: employees.departmentId }).from(employees).where(eq(employees.id, opts.userId)).limit(1);
+    departmentId = emp?.departmentId ?? null;
+  }
+
+  if (opts?.role === "employee" && opts?.userId) {
+    conditions.push(eq(allocations.employeeId, opts.userId));
+  }
   if (opts.search) {
     conditions.push(
       or(
@@ -50,34 +60,146 @@ export async function list(opts: { search?: string; categoryId?: string; status?
   if (opts.status) conditions.push(eq(assets.status, opts.status as never));
   if (opts.location) conditions.push(like(assets.location, `%${opts.location}%`));
 
+  if (opts?.role === "department_head" && departmentId) {
+    conditions.push(eq(allocations.departmentId, departmentId));
+  }
+
   const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-  return db
-    .select({
-      id: assets.id,
-      assetTag: assets.assetTag,
-      name: assets.name,
-      categoryId: assets.categoryId,
-      categoryName: assetCategories.name,
-      serialNumber: assets.serialNumber,
-      model: assets.model,
-      manufacturer: assets.manufacturer,
-      status: assets.status,
-      photoUrl: assets.photoUrl,
-      location: assets.location,
-      bookable: assets.bookable,
-      qrCodeValue: assets.qrCodeValue,
-      purchaseDate: assets.purchaseDate,
-      purchaseCost: assets.purchaseCost,
-      createdAt: assets.createdAt,
-    })
+  const assetSelection = {
+    id: assets.id,
+    assetTag: assets.assetTag,
+    name: assets.name,
+    categoryId: assets.categoryId,
+    categoryName: assetCategories.name,
+    serialNumber: assets.serialNumber,
+    model: assets.model,
+    manufacturer: assets.manufacturer,
+    status: assets.status,
+    photoUrl: assets.photoUrl,
+    location: assets.location,
+    bookable: assets.bookable,
+    qrCodeValue: assets.qrCodeValue,
+    purchaseDate: assets.purchaseDate,
+    purchaseCost: assets.purchaseCost,
+    createdAt: assets.createdAt,
+  };
+
+  const baseQuery = db
+    .select(assetSelection)
     .from(assets)
-    .leftJoin(assetCategories, eq(assets.categoryId, assetCategories.id))
-    .where(where)
-    .orderBy(assets.createdAt);
+    .leftJoin(assetCategories, eq(assets.categoryId, assetCategories.id));
+
+  if (opts?.role === "department_head" && departmentId) {
+    return baseQuery
+      .leftJoin(allocations, and(eq(assets.id, allocations.assetId), eq(allocations.status, "active")))
+      .leftJoin(employees, eq(allocations.employeeId, employees.id))
+      .where(
+        and(
+          eq(allocations.status, "active"),
+          or(
+            eq(allocations.departmentId, departmentId),
+            eq(employees.departmentId, departmentId),
+          ),
+          ...(where ? [where] : []),
+        ),
+      )
+      .orderBy(assets.createdAt);
+  }
+
+  if (opts?.role === "employee" && opts?.userId) {
+    return baseQuery
+      .leftJoin(allocations, and(eq(assets.id, allocations.assetId), eq(allocations.status, "active")))
+      .where(and(eq(allocations.employeeId, opts.userId), eq(allocations.status, "active")))
+      .orderBy(assets.createdAt);
+  }
+
+  return baseQuery.where(where).orderBy(assets.createdAt);
 }
 
-export async function getById(id: string) {
+export async function getById(id: string, opts?: { role?: string; userId?: string }) {
+  if (opts?.role === "department_head" && opts?.userId) {
+    const [emp] = await db.select({ departmentId: employees.departmentId }).from(employees).where(eq(employees.id, opts.userId)).limit(1);
+    const departmentId = emp?.departmentId ?? null;
+    const [row] = await db
+      .select({
+        id: assets.id,
+        assetTag: assets.assetTag,
+        name: assets.name,
+        description: assets.description,
+        categoryId: assets.categoryId,
+        categoryName: assetCategories.name,
+        serialNumber: assets.serialNumber,
+        model: assets.model,
+        manufacturer: assets.manufacturer,
+        purchaseDate: assets.purchaseDate,
+        purchaseCost: assets.purchaseCost,
+        warrantyExpiry: assets.warrantyExpiry,
+        status: assets.status,
+        photoUrl: assets.photoUrl,
+        documents: assets.documents,
+        qrCodeValue: assets.qrCodeValue,
+        location: assets.location,
+        notes: assets.notes,
+        bookable: assets.bookable,
+        createdAt: assets.createdAt,
+        updatedAt: assets.updatedAt,
+      })
+      .from(assets)
+      .leftJoin(assetCategories, eq(assets.categoryId, assetCategories.id))
+      .leftJoin(allocations, and(eq(assets.id, allocations.assetId), eq(allocations.status, "active")))
+      .leftJoin(employees, eq(allocations.employeeId, employees.id))
+      .where(
+        and(
+          eq(assets.id, id),
+          eq(allocations.status, "active"),
+          or(
+            eq(allocations.departmentId, departmentId),
+            eq(employees.departmentId, departmentId),
+          ),
+        ),
+      )
+      .limit(1);
+
+    if (!row) throw new AppError("FORBIDDEN", "You do not have access to this asset.", 403);
+    return row;
+  }
+
+  if (opts?.role === "employee" && opts?.userId) {
+    const [row] = await db
+      .select({
+        id: assets.id,
+        assetTag: assets.assetTag,
+        name: assets.name,
+        description: assets.description,
+        categoryId: assets.categoryId,
+        categoryName: assetCategories.name,
+        serialNumber: assets.serialNumber,
+        model: assets.model,
+        manufacturer: assets.manufacturer,
+        purchaseDate: assets.purchaseDate,
+        purchaseCost: assets.purchaseCost,
+        warrantyExpiry: assets.warrantyExpiry,
+        status: assets.status,
+        photoUrl: assets.photoUrl,
+        documents: assets.documents,
+        qrCodeValue: assets.qrCodeValue,
+        location: assets.location,
+        notes: assets.notes,
+        bookable: assets.bookable,
+        createdAt: assets.createdAt,
+        updatedAt: assets.updatedAt,
+      })
+      .from(assets)
+      .leftJoin(assetCategories, eq(assets.categoryId, assetCategories.id))
+      .leftJoin(allocations, and(eq(assets.id, allocations.assetId), eq(allocations.status, "active")))
+      .where(and(eq(assets.id, id), eq(allocations.employeeId, opts.userId), eq(allocations.status, "active")))
+      .limit(1);
+
+    if (!row) throw new AppError("FORBIDDEN", "You do not have access to this asset.", 403);
+    return row;
+  }
+
   const [row] = await db
     .select({
       id: assets.id,

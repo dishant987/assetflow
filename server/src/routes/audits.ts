@@ -27,7 +27,7 @@ const verdictSchema = z.object({
 });
 
 router.use(authGuard);
-router.use(roleGuard("admin", "manager", "department_head"));
+router.use(roleGuard("admin", "manager"));
 
 router.get("/", asyncHandler(ctrl.listCycles));
 router.get("/:id", asyncHandler(ctrl.getCycleById));

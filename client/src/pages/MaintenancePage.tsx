@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Button, Input, Select, Table, Card, StatusBadge, Badge, Modal, showToast, PageLoader, EmptyState } from "../components/ui";
 import type { Column } from "../components/ui";
 import api from "../lib/api";
+import { isAssetManager } from "../lib/roles";
 import { useAuthStore } from "../stores/useAuthStore";
 
 type Maint = {
@@ -66,7 +67,7 @@ export default function MaintenancePage() {
     {
       key: "actions", label: "", render: (m) => {
         const next = statusFlow[m.status] ?? [];
-        if (next.length === 0 || (user?.role !== "admin" && user?.role !== "manager")) return null;
+        if (next.length === 0 || !isAssetManager(user?.role)) return null;
         return (
           <div className="flex gap-xs">
             {next.map((s) => <Button key={s} variant="ghost" size="sm" onClick={() => handleStatusUpdate(m.id, s)}>{s.replace("_", " ")}</Button>)}

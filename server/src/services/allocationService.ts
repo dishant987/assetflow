@@ -63,14 +63,25 @@ async function checkAllocationAccess(allocationId: string, opts?: { role?: strin
     }
 
     const [alloc] = await db
-      .select({ departmentId: allocations.departmentId })
+      .select({ departmentId: allocations.departmentId, employeeId: allocations.employeeId })
       .from(allocations)
       .where(eq(allocations.id, allocationId))
       .limit(1);
     if (!alloc) {
       throw new AppError("NOT_FOUND", "Allocation not found.", 404);
     }
-    if (alloc.departmentId !== userDeptId) {
+
+    let allocDeptId = alloc.departmentId;
+    if (!allocDeptId) {
+      const [employee] = await db
+        .select({ departmentId: employees.departmentId })
+        .from(employees)
+        .where(eq(employees.id, alloc.employeeId))
+        .limit(1);
+      allocDeptId = employee?.departmentId;
+    }
+
+    if (allocDeptId !== userDeptId) {
       throw new AppError("FORBIDDEN", "You do not have access to allocations outside your department.", 403);
     }
   }
@@ -130,6 +141,15 @@ export async function create(
       .limit(1);
     if (!targetEmp || targetEmp.departmentId !== userDeptId) {
       throw new AppError("FORBIDDEN", "You can only allocate assets to employees in your department.", 403);
+    }
+  } else {
+    if (!data.departmentId) {
+      const [targetEmp] = await db
+        .select({ departmentId: employees.departmentId })
+        .from(employees)
+        .where(eq(employees.id, data.employeeId))
+        .limit(1);
+      data.departmentId = targetEmp?.departmentId ?? null;
     }
   }
 
