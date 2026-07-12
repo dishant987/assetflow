@@ -9,10 +9,17 @@ export function errorHandler(
   _next: NextFunction,
 ) {
   if (err instanceof AppError) {
-    res.status(err.statusCode).json({ code: err.code, message: err.message });
+    const body: Record<string, unknown> = { code: err.code, message: err.message };
+    if (err.fields) body.fields = err.fields;
+    res.status(err.statusCode).json({ error: body });
     return;
   }
 
   logger.error("Unhandled error", err);
-  res.status(500).json({ code: "INTERNAL_ERROR", message: "Internal server error" });
+  res.status(500).json({
+    error: {
+      code: "INTERNAL_ERROR",
+      message: "Something went wrong on our end. Please try again.",
+    },
+  });
 }

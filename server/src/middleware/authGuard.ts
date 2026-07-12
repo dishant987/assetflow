@@ -4,7 +4,7 @@ import { env } from "../config/env";
 import { AppError } from "../utils/AppError";
 
 export interface AuthPayload {
-  userId: string;
+  userId: number;
   role: string;
 }
 
@@ -19,7 +19,7 @@ declare global {
 export function authGuard(req: Request, _res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) {
-    throw new AppError("UNAUTHORIZED", "Missing or invalid token", 401);
+    throw new AppError("UNAUTHORIZED", "Missing or invalid token. Please sign in again.", 401);
   }
 
   try {
@@ -27,6 +27,6 @@ export function authGuard(req: Request, _res: Response, next: NextFunction) {
     req.user = payload;
     next();
   } catch {
-    throw new AppError("UNAUTHORIZED", "Invalid or expired token", 401);
+    throw new AppError("UNAUTHORIZED", "Your session has expired. Please sign in again.", 401);
   }
 }

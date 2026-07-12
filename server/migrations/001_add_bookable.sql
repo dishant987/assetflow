@@ -1,0 +1,1 @@
+ALTER TABLE assets ADD COLUMN bookable integer NOT NULL DEFAULT 0;
