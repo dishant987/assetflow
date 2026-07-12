@@ -91,15 +91,16 @@ export async function list(opts: { search?: string; categoryId?: string; status?
     .leftJoin(assetCategories, eq(assets.categoryId, assetCategories.id));
 
   if (opts?.role === "department_head" && departmentId) {
-    return baseQuery
+      const departmentIdValue = departmentId;
+      return baseQuery
       .leftJoin(allocations, and(eq(assets.id, allocations.assetId), eq(allocations.status, "active")))
       .leftJoin(employees, eq(allocations.employeeId, employees.id))
       .where(
         and(
           eq(allocations.status, "active"),
           or(
-            eq(allocations.departmentId, departmentId),
-            eq(employees.departmentId, departmentId),
+              eq(allocations.departmentId, departmentIdValue),
+              eq(employees.departmentId, departmentIdValue),
           ),
           ...(where ? [where] : []),
         ),

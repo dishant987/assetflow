@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { Button, Input, Select, Table, Card, StatusBadge, showToast, Modal, PageLoader } from "../components/ui";
 import type { Column } from "../components/ui";
 import api from "../lib/api";
-import { isAssetManager, isDepartmentHead } from "../lib/roles";
+import { isAssetManager } from "../lib/roles";
 import { useAuthStore } from "../stores/useAuthStore";
 
 type AuditItem = {

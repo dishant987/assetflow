@@ -149,7 +149,7 @@ export async function create(
         .from(employees)
         .where(eq(employees.id, data.employeeId))
         .limit(1);
-      data.departmentId = targetEmp?.departmentId ?? null;
+      data.departmentId = targetEmp?.departmentId ?? undefined;
     }
   }
 
