@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Button, Input, Select, Table, Card, Badge, Modal, showToast, PageLoader, EmptyState } from "../components/ui";
 import type { Column } from "../components/ui";
 import api from "../lib/api";
+import { debounce } from "../lib/lodash";
 
 type Department = { id: string; name: string; code: string; description: string | null; headEmployeeId: string | null; headName: string | null; parentId: string | null; parentName: string | null; isActive: number };
 type Category = { id: string; name: string; code: string; description: string | null; isActive: number };
-type Employee = { id: string; employeeCode: string; firstName: string; lastName: string; email: string; departmentId: string | null; departmentName: string | null; role: string; isActive: number };
+type Employee = { id: string; employeeCode: string; firstName: string; lastName: string; email: string; departmentId: string | null; departmentName: string | null; role: string; status: string; phone: string | null; designation: string | null };
 
 export default function OrganizationPage() {
   const [tab, setTab] = useState<"departments" | "categories" | "employees">("departments");
@@ -18,8 +19,65 @@ export default function OrganizationPage() {
   const [showCatModal, setShowCatModal] = useState(false);
   const [editCat, setEditCat] = useState<Category | null>(null);
   const [showPromote, setShowPromote] = useState<Employee | null>(null);
+  const [showEditEmp, setShowEditEmp] = useState<Employee | null>(null);
   const [deleteDept, setDeleteDept] = useState<Department | null>(null);
   const [deleteCat, setDeleteCat] = useState<Category | null>(null);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+
+  const updateSearch = useMemo(
+    () =>
+      debounce((val: string) => {
+        setDebouncedSearch(val);
+        setPage(1);
+      }, 300),
+    []
+  );
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setSearchQuery(val);
+    updateSearch(val);
+  };
+
+  const filteredDepts = departments.filter((d) =>
+    d.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+    d.code.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+    (d.description && d.description.toLowerCase().includes(debouncedSearch.toLowerCase()))
+  );
+
+  const filteredCats = categories.filter((c) =>
+    c.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+    c.code.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+    (c.description && c.description.toLowerCase().includes(debouncedSearch.toLowerCase()))
+  );
+
+  const filteredEmps = employees.filter((e) => {
+    const dept = departments.find((d) => d.id === e.departmentId);
+    const deptName = dept ? dept.name : "";
+    return (
+      e.employeeCode.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      e.firstName.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      e.lastName.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      e.email.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      e.role.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      deptName.toLowerCase().includes(debouncedSearch.toLowerCase())
+    );
+  });
+
+  const totalItems = tab === "departments" ? filteredDepts.length : tab === "categories" ? filteredCats.length : filteredEmps.length;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+  const activePage = Math.min(page, Math.max(1, totalPages));
+
+  const startIndex = (activePage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+
+  const displayedDepts = filteredDepts.slice(startIndex, endIndex);
+  const displayedCats = filteredCats.slice(startIndex, endIndex);
+  const displayedEmps = filteredEmps.slice(startIndex, endIndex);
 
   const fetchDepts = async () => { try { const r = await api.get("/departments"); setDepartments(r.data.data); } catch { showToast("Failed to load departments", "error"); } };
   const fetchCats = async () => { try { const r = await api.get("/asset-categories"); setCategories(r.data.data); } catch { showToast("Failed to load categories", "error"); } };
@@ -63,41 +121,85 @@ export default function OrganizationPage() {
     { key: "employeeCode", label: "Code" },
     { key: "firstName", label: "Name", sortable: true, render: (e) => `${e.firstName} ${e.lastName}` },
     { key: "email", label: "Email" },
-    { key: "departmentName", label: "Department", render: (e) => e.departmentName ?? "—" },
+    { key: "departmentName", label: "Department", render: (e) => {
+      const dept = departments.find((d) => d.id === e.departmentId);
+      return dept ? dept.name : "—";
+    } },
     { key: "role", label: "Role", render: (e) => <Badge>{e.role}</Badge> },
-    { key: "isActive", label: "Status", render: (e) => e.isActive ? <Badge variant="success">Active</Badge> : <Badge variant="muted">Inactive</Badge> },
+    { key: "status", label: "Status", render: (e) => e.status === "active" ? <Badge variant="success">Active</Badge> : <Badge variant="muted">Inactive</Badge> },
     { key: "actions", label: "", render: (e) => (
       <div className="flex gap-xs">
+        <Button size="sm" variant="ghost" onClick={() => setShowEditEmp(e)}>Edit</Button>
         {e.role !== "admin" && <Button size="sm" variant="ghost" onClick={() => setShowPromote(e)}>Promote</Button>}
-        {e.isActive ? <Button size="sm" variant="ghost" onClick={async () => { try { await api.patch(`/employees/${e.id}/status`, { status: "inactive" }); showToast("Deactivated", "success"); fetchEmps(); } catch { showToast("Failed", "error"); } }}>Deactivate</Button> : null}
+        {e.status === "active" ? <Button size="sm" variant="ghost" onClick={async () => { try { await api.patch(`/employees/${e.id}/status`, { status: "inactive" }); showToast("Deactivated", "success"); fetchEmps(); } catch { showToast("Failed", "error"); } }}>Deactivate</Button> : null}
       </div>
     )},
   ];
 
   return (
     <div className="flex flex-col gap-lg">
-      <div className="flex gap-sm" style={{ alignItems: "center" }}>
-        <Button variant={tab === "departments" ? "primary" : "ghost"} size="sm" onClick={() => setTab("departments")}>Departments</Button>
-        <Button variant={tab === "categories" ? "primary" : "ghost"} size="sm" onClick={() => setTab("categories")}>Asset Categories</Button>
-        <Button variant={tab === "employees" ? "primary" : "ghost"} size="sm" onClick={() => setTab("employees")}>Employee Directory</Button>
-        <div style={{ flex: 1 }} />
-        {tab === "departments" && <Button onClick={() => { setEditDept(null); setShowDeptModal(true); }}>+ Add Department</Button>}
-        {tab === "categories" && <Button onClick={() => { setEditCat(null); setShowCatModal(true); }}>+ Add Category</Button>}
+      <div className="flex gap-sm" style={{ alignItems: "center", flexWrap: "wrap", justifyContent: "space-between" }}>
+        <div className="flex gap-sm">
+          <Button variant={tab === "departments" ? "primary" : "ghost"} size="sm" onClick={() => { setTab("departments"); setPage(1); setSearchQuery(""); setDebouncedSearch(""); }}>Departments</Button>
+          <Button variant={tab === "categories" ? "primary" : "ghost"} size="sm" onClick={() => { setTab("categories"); setPage(1); setSearchQuery(""); setDebouncedSearch(""); }}>Asset Categories</Button>
+          <Button variant={tab === "employees" ? "primary" : "ghost"} size="sm" onClick={() => { setTab("employees"); setPage(1); setSearchQuery(""); setDebouncedSearch(""); }}>Employee Directory</Button>
+        </div>
+        <div style={{ display: "flex", gap: "12px", alignItems: "center", flex: 1, justifyContent: "flex-end", minWidth: "280px" }}>
+          <div style={{ width: "220px" }}>
+            <Input
+              placeholder={`Search ${tab}...`}
+              value={searchQuery}
+              onChange={handleSearchChange}
+            />
+          </div>
+          {tab === "departments" && <Button onClick={() => { setEditDept(null); setShowDeptModal(true); }}>+ Add Department</Button>}
+          {tab === "categories" && <Button onClick={() => { setEditCat(null); setShowCatModal(true); }}>+ Add Category</Button>}
+        </div>
       </div>
 
       <Card>
         {loading ? <PageLoader /> : tab === "departments" ? (
-          departments.length === 0 ? <EmptyState title="No departments" description="Add a department to get started." /> : <Table columns={deptCols} data={departments} />
+          filteredDepts.length === 0 ? <EmptyState title="No departments" description={debouncedSearch ? "No departments match your search." : "Add a department to get started."} /> : <Table columns={deptCols} data={displayedDepts} />
         ) : tab === "categories" ? (
-          categories.length === 0 ? <EmptyState title="No categories" description="Add an asset category to get started." /> : <Table columns={catCols} data={categories} />
+          filteredCats.length === 0 ? <EmptyState title="No categories" description={debouncedSearch ? "No categories match your search." : "Add an asset category to get started."} /> : <Table columns={catCols} data={displayedCats} />
         ) : (
-          employees.length === 0 ? <EmptyState title="No employees" description="Employee directory is empty." /> : <Table columns={empCols} data={employees} />
+          filteredEmps.length === 0 ? <EmptyState title="No employees" description={debouncedSearch ? "No employees match your search." : "Employee directory is empty."} /> : <Table columns={empCols} data={displayedEmps} />
         )}
       </Card>
+
+      {totalPages > 1 && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, padding: "0 8px" }}>
+          <span style={{ fontSize: 13, color: "var(--color-text-secondary)" }}>
+            Showing {Math.min(startIndex + 1, totalItems)} to {Math.min(endIndex, totalItems)} of {totalItems} entries
+          </span>
+          <div className="flex gap-sm" style={{ alignItems: "center" }}>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={activePage === 1}
+              onClick={() => setPage(activePage - 1)}
+            >
+              Previous
+            </Button>
+            <span style={{ fontSize: 13, fontWeight: 500, padding: "0 8px" }}>
+              Page {activePage} of {totalPages}
+            </span>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={activePage === totalPages}
+              onClick={() => setPage(activePage + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
 
       {showDeptModal && <DeptModal edit={editDept} onClose={() => { setShowDeptModal(false); setEditDept(null); }} onDone={() => { setShowDeptModal(false); setEditDept(null); fetchDepts(); }} departments={departments} employees={employees} />}
       {showCatModal && <CatModal edit={editCat} onClose={() => { setShowCatModal(false); setEditCat(null); }} onDone={() => { setShowCatModal(false); setEditCat(null); fetchCats(); }} />}
       {showPromote && <PromoteModal employee={showPromote} onClose={() => setShowPromote(null)} onDone={() => { setShowPromote(null); fetchEmps(); }} />}
+      {showEditEmp && <EmpModal employee={showEditEmp} departments={departments} onClose={() => setShowEditEmp(null)} onDone={() => { setShowEditEmp(null); fetchEmps(); }} />}
 
       {deleteDept && (
         <Modal
@@ -176,7 +278,7 @@ function DeptModal({ edit, onClose, onDone, departments, employees }: { edit: De
     e.preventDefault();
     setSaving(true);
     try {
-      const payload = { ...form, isActive: form.isActive ? 1 : 0 };
+      const payload = { ...form, isActive: form.isActive ? 1 : 0, parentId: form.parentId || null, headEmployeeId: form.headEmployeeId || null };
       if (edit) { await api.patch(`/departments/${edit.id}`, payload); showToast("Department updated", "success"); }
       else { await api.post("/departments", payload); showToast("Department created", "success"); }
       onDone();
@@ -265,6 +367,48 @@ function PromoteModal({ employee, onClose, onDone }: { employee: Employee; onClo
         <div className="modal-footer" style={{ padding: 0, border: "none" }}>
           <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={saving}>Promote</Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function EmpModal({ employee, departments, onClose, onDone }: { employee: Employee; departments: Department[]; onClose: () => void; onDone: () => void }) {
+  const [form, setForm] = useState({
+    firstName: employee.firstName,
+    lastName: employee.lastName,
+    email: employee.email,
+    phone: employee.phone ?? "",
+    designation: employee.designation ?? "",
+    departmentId: employee.departmentId ?? "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await api.patch(`/employees/${employee.id}`, { ...form, departmentId: form.departmentId || null });
+      showToast("Employee updated", "success");
+      onDone();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ?? "Failed";
+      showToast(msg, "error");
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <Modal open onClose={onClose} title={`Edit ${employee.firstName} ${employee.lastName}`}>
+      <form onSubmit={handleSave} className="flex flex-col gap-md">
+        <Input label="First Name" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} required />
+        <Input label="Last Name" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} required />
+        <Input label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+        <Input label="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+        <Input label="Designation" value={form.designation} onChange={(e) => setForm({ ...form, designation: e.target.value })} />
+        <Select label="Department" value={form.departmentId} onChange={(e) => setForm({ ...form, departmentId: e.target.value })} placeholder="— None —" options={departments.map((d) => ({ value: String(d.id), label: d.name }))} />
+        <div className="modal-footer" style={{ padding: 0, border: "none" }}>
+          <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
+          <Button type="submit" loading={saving}>Save</Button>
         </div>
       </form>
     </Modal>

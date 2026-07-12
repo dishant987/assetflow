@@ -21,6 +21,16 @@ router.use(authGuard);
 router.get("/", asyncHandler(ctrl.list));
 router.get("/:id", asyncHandler(ctrl.getById));
 router.post("/:id/promote", roleGuard("admin"), validate(promoteSchema), asyncHandler(ctrl.promote));
+const updateSchema = z.object({
+  firstName: z.string().min(1).optional(),
+  lastName: z.string().min(1).optional(),
+  email: z.string().email().optional(),
+  phone: z.string().nullable().optional(),
+  designation: z.string().nullable().optional(),
+  departmentId: z.string().uuid().nullable().optional(),
+});
+
+router.patch("/:id", roleGuard("admin"), validate(updateSchema), asyncHandler(ctrl.update));
 router.patch("/:id/status", roleGuard("admin"), validate(statusSchema), asyncHandler(ctrl.updateStatus));
 
 export default router;

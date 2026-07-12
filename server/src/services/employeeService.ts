@@ -66,6 +66,16 @@ export async function promote(id: string, role: "manager" | "department_head" | 
   return rest;
 }
 
+export async function update(id: string, raw: { firstName?: string; lastName?: string; email?: string; phone?: string; designation?: string; departmentId?: string | null }) {
+  await getById(id);
+  const data = { ...raw };
+  if (data.phone === "") data.phone = null as any;
+  if (data.designation === "") data.designation = null as any;
+  const [updated] = await db.update(employees).set(data).where(eq(employees.id, id)).returning();
+  const { password, ...rest } = updated;
+  return rest;
+}
+
 export async function updateStatus(id: string, status: "active" | "inactive" | "suspended") {
   await getById(id);
   const [updated] = await db.update(employees).set({ status }).where(eq(employees.id, id)).returning();

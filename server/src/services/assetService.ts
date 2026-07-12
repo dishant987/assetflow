@@ -109,7 +109,18 @@ export async function getByTag(tag: string) {
   return row;
 }
 
-export async function create(data: CreateAsset) {
+function cleanEmptyStrings<T extends Record<string, any>>(data: T): T {
+  const result = { ...data };
+  for (const key in result) {
+    if (result[key] === "") {
+      result[key] = null as any;
+    }
+  }
+  return result;
+}
+
+export async function create(raw: CreateAsset) {
+  const data = cleanEmptyStrings(raw);
   const tag = await nextAssetTag();
 
   if (data.serialNumber) {
@@ -147,8 +158,9 @@ export async function create(data: CreateAsset) {
   return { ...asset, qrCodeValue: tag };
 }
 
-export async function update(id: string, data: Partial<CreateAsset>) {
+export async function update(id: string, raw: Partial<CreateAsset>) {
   await getById(id);
+  const data = cleanEmptyStrings(raw);
 
   if (data.serialNumber) {
     const [dup] = await db
