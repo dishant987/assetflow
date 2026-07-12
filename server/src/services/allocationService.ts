@@ -4,7 +4,7 @@ import { assets } from "../models/assets";
 import { employees } from "../models/employees";
 import { departments } from "../models/departments";
 import { AppError } from "../utils/AppError";
-import { eq, and, isNull, sql } from "drizzle-orm";
+import { eq, and, desc, isNull, sql } from "drizzle-orm";
 import * as notificationService from "./notificationService";
 import * as activityLog from "./activityLogService";
 
@@ -28,7 +28,7 @@ export async function list() {
     .leftJoin(assets, eq(allocations.assetId, assets.id))
     .leftJoin(employees, eq(allocations.employeeId, employees.id))
     .leftJoin(departments, eq(allocations.departmentId, departments.id))
-    .orderBy(allocations.allocatedAt);
+    .orderBy(desc(allocations.allocatedAt));
 }
 
 export async function getById(id: string) {

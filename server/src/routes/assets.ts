@@ -22,6 +22,7 @@ const createSchema = z.object({
   documents: z.array(z.string()).optional(),
   location: z.string().optional(),
   bookable: z.number().int().min(0).max(1).optional(),
+  status: z.enum(["available", "allocated", "under_maintenance", "retired", "lost", "disposed"]).optional(),
   notes: z.string().optional(),
 });
 

@@ -24,6 +24,7 @@ type CreateAsset = {
   condition?: string;
   bookable?: number;
   notes?: string;
+  status?: string;
 };
 
 export async function list(opts: { search?: string; categoryId?: string; status?: string; location?: string }) {

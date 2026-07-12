@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Button, Input, Select, Table, Card, StatusBadge, showToast, Modal, PageLoader, EmptyState } from "../components/ui";
+import { Button, Input, Select, Table, Card, StatusBadge, showToast, Modal, PageLoader, EmptyState, Badge } from "../components/ui";
 import type { Column } from "../components/ui";
 import api from "../lib/api";
+import { useAuthStore } from "../stores/useAuthStore";
 
 type Asset = {
   id: string;
@@ -33,8 +34,10 @@ export default function AssetsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [showRegister, setShowRegister] = useState(false);
+  const [editAsset, setEditAsset] = useState<Asset | null>(null);
   const nav = useNavigate();
   const loc = useLocation();
+  const user = useAuthStore((s) => s.user);
 
   useEffect(() => {
     if (new URLSearchParams(loc.search).get("register") === "true") {
@@ -70,6 +73,8 @@ export default function AssetsPage() {
     { key: "status", label: "Status", render: (a) => <StatusBadge status={a.status} /> },
     { key: "location", label: "Location" },
     { key: "serialNumber", label: "Serial #" },
+    { key: "bookable", label: "Bookable", render: (a) => a.bookable ? <Badge variant="info">Yes</Badge> : <Badge variant="muted">No</Badge> },
+    ...(user?.role === "admin" || user?.role === "manager" ? [{ key: "actions", label: "", render: (a: Asset) => <Button size="sm" variant="ghost" onClick={() => setEditAsset(a)}>Edit</Button> }] : []),
   ];
 
   return (
@@ -96,6 +101,7 @@ export default function AssetsPage() {
       </div>
 
       {showRegister && <RegisterModal categories={categories} onClose={() => setShowRegister(false)} onSaved={() => { setShowRegister(false); fetchAssets(); }} />}
+      {editAsset && <EditModal asset={editAsset} categories={categories} onClose={() => setEditAsset(null)} onSaved={() => { setEditAsset(null); fetchAssets(); }} />}
     </div>
   );
 }
@@ -178,6 +184,162 @@ function RegisterModal({ categories, onClose, onSaved }: { categories: Category[
           <Button type="submit" loading={saving}>Register</Button>
         </div>
       </form>
+    </Modal>
+  );
+}
+
+function EditModal({ asset, categories, onClose, onSaved }: { asset: Asset; categories: Category[]; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState({
+    name: "", categoryId: "", serialNumber: "", model: "", manufacturer: "",
+    purchaseDate: "", purchaseCost: "", warrantyExpiry: "", location: "", notes: "", description: "", condition: "", bookable: false, status: "",
+  });
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [docFiles, setDocFiles] = useState<File[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+    setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  useEffect(() => {
+    async function fetchDetail() {
+      try {
+        const { data } = await api.get(`/assets/${asset.id}`);
+        const a = data.data;
+        setForm({
+          name: a.name || "",
+          categoryId: a.categoryId || "",
+          serialNumber: a.serialNumber || "",
+          model: a.model || "",
+          manufacturer: a.manufacturer || "",
+          purchaseDate: a.purchaseDate ? a.purchaseDate.split("T")[0] : "",
+          purchaseCost: a.purchaseCost || "",
+          warrantyExpiry: a.warrantyExpiry ? a.warrantyExpiry.split("T")[0] : "",
+          location: a.location || "",
+          notes: a.notes || "",
+          description: a.description || "",
+          condition: a.condition || "",
+          bookable: a.bookable === 1,
+          status: a.status || "",
+        });
+      } catch {
+        showToast("Failed to load asset details", "error");
+        onClose();
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchDetail();
+  }, [asset.id, onClose]);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      let photoUrl = undefined;
+      if (photoFile) {
+        const fd = new FormData(); fd.append("file", photoFile);
+        const up = await api.post("/upload", fd, { headers: { "Content-Type": "multipart/form-data" } });
+        photoUrl = up.data.data.url;
+      }
+      let documents: string[] | undefined = undefined;
+      if (docFiles.length > 0) {
+        documents = [];
+        for (const f of docFiles) {
+          const fd = new FormData(); fd.append("file", f);
+          const up = await api.post("/upload", fd, { headers: { "Content-Type": "multipart/form-data" } });
+          documents.push(up.data.data.url);
+        }
+      }
+      const payload: any = {
+        name: form.name,
+        categoryId: form.categoryId,
+        serialNumber: form.serialNumber || null,
+        model: form.model || null,
+        manufacturer: form.manufacturer || null,
+        purchaseDate: form.purchaseDate || null,
+        purchaseCost: form.purchaseCost || null,
+        warrantyExpiry: form.warrantyExpiry || null,
+        location: form.location || null,
+        notes: form.notes || null,
+        description: form.description || null,
+        condition: form.condition || null,
+        bookable: form.bookable ? 1 : 0,
+        status: form.status,
+      };
+      if (photoUrl !== undefined) payload.photoUrl = photoUrl;
+      if (documents !== undefined) payload.documents = documents;
+
+      await api.patch(`/assets/${asset.id}`, payload);
+      showToast("Asset updated successfully", "success");
+      onSaved();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ?? "Failed to update asset";
+      showToast(msg, "error");
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <Modal open onClose={onClose} title="Edit Asset">
+      {loading ? (
+        <PageLoader />
+      ) : (
+        <form onSubmit={handleSave} className="flex flex-col gap-md">
+          <Input label="Asset Name" value={form.name} onChange={set("name")} required />
+          <Select label="Category" value={form.categoryId} onChange={set("categoryId")} required options={[{ value: "", label: "Select..." }, ...categories.map((c) => ({ value: String(c.id), label: c.name }))]} />
+          <Input label="Serial Number" value={form.serialNumber} onChange={set("serialNumber")} />
+          <div className="flex gap-sm">
+            <Input label="Model" value={form.model} onChange={set("model")} />
+            <Input label="Manufacturer" value={form.manufacturer} onChange={set("manufacturer")} />
+          </div>
+          <div className="flex gap-sm">
+            <Input label="Purchase Date" type="date" value={form.purchaseDate} onChange={set("purchaseDate")} />
+            <Input label="Cost" value={form.purchaseCost} onChange={set("purchaseCost")} placeholder="0.00" />
+            <Input label="Warranty Expiry" type="date" value={form.warrantyExpiry} onChange={set("warrantyExpiry")} />
+          </div>
+          <div className="flex gap-sm">
+            <Input label="Location" value={form.location} onChange={set("location")} style={{ flex: 2 }} />
+            <Select 
+              label="Status" 
+              value={form.status} 
+              onChange={set("status")} 
+              required
+              options={[
+                { value: "available", label: "Available" },
+                { value: "allocated", label: "Allocated" },
+                { value: "under_maintenance", label: "Under Maintenance" },
+                { value: "retired", label: "Retired" },
+                { value: "lost", label: "Lost" },
+                { value: "disposed", label: "Disposed" },
+              ]}
+              style={{ flex: 1 }}
+            />
+          </div>
+          <div className="flex gap-sm">
+            <Input label="Condition" value={form.condition} onChange={set("condition")} placeholder="e.g. Good, Fair, Poor" />
+            <div className="field" style={{ justifyContent: "flex-end" }}>
+              <label className="field-label">Bookable</label>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, cursor: "pointer" }}>
+                <input type="checkbox" checked={form.bookable} onChange={(e) => setForm((f) => ({ ...f, bookable: e.target.checked }))} /> <span style={{ color: "var(--color-text-muted)" }}>Can be reserved</span>
+              </label>
+            </div>
+          </div>
+          <Input label="Description" value={form.description} onChange={set("description")} />
+          <Input label="Notes" value={form.notes} onChange={set("notes")} />
+          <div className="field">
+            <label className="field-label">Photo</label>
+            <input type="file" accept="image/*" onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)} />
+          </div>
+          <div className="field">
+            <label className="field-label">Additional Documents</label>
+            <input type="file" multiple accept=".pdf,.doc,.docx,.xlsx,.csv" onChange={(e) => setDocFiles(Array.from(e.target.files ?? []))} />
+          </div>
+          <div className="modal-footer" style={{ padding: 0, border: "none" }}>
+            <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
+            <Button type="submit" loading={saving}>Save Changes</Button>
+          </div>
+        </form>
+      )}
     </Modal>
   );
 }

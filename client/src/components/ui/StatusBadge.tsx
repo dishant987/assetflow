@@ -13,6 +13,7 @@ const statusMap: Record<string, "success" | "warning" | "error" | "info" | "mute
   approved: "success",
   rejected: "error",
   cancelled: "muted",
+  transfer_pending: "warning",
   completed: "success",
   in_progress: "info",
   reported: "warning",
@@ -34,6 +35,7 @@ const statusMap: Record<string, "success" | "warning" | "error" | "info" | "mute
 const labels: Record<string, string> = {
   under_maintenance: "Under Maintenance",
   in_progress: "In Progress",
+  transfer_pending: "Transfer Pending",
   // auto-capitalise fallback
 };
 

@@ -30,6 +30,7 @@ export default function AllocationsPage() {
   const [showAllocate, setShowAllocate] = useState(false);
   const [showReturn, setShowReturn] = useState<Allocation | null>(null);
   const [showTransfer, setShowTransfer] = useState<{ assetTag: string; allocationId: string } | null>(null);
+  const [showTransferAction, setShowTransferAction] = useState<{ req: TransferReq; action: "approve" | "reject" } | null>(null);
   const [tab, setTab] = useState<"allocations" | "transfers">("allocations");
   const user = useAuthStore((s) => s.user);
 
@@ -82,20 +83,17 @@ export default function AllocationsPage() {
     { key: "fromEmployeeName", label: "From" },
     { key: "toEmployeeName", label: "To" },
     { key: "status", label: "Status", render: (t) => <StatusBadge status={t.status} /> },
+    { key: "requestedAt", label: "Requested", render: (t) => new Date(t.requestedAt).toLocaleString() },
     {
       key: "actions", label: "", render: (t) =>
         t.status === "pending" && (user?.role === "admin" || user?.role === "manager") ? (
           <div className="flex gap-xs">
-            <Button variant="ghost" size="sm" onClick={() => handleTransferAction(t.id, "approve")}>Approve</Button>
-            <Button variant="ghost" size="sm" onClick={() => handleTransferAction(t.id, "reject")}>Reject</Button>
+            <Button variant="ghost" size="sm" onClick={() => setShowTransferAction({ req: t, action: "approve" })}>Approve</Button>
+            <Button variant="ghost" size="sm" onClick={() => setShowTransferAction({ req: t, action: "reject" })}>Reject</Button>
           </div>
         ) : null,
     },
   ];
-
-  async function handleTransferAction(id: string, action: "approve" | "reject") {
-    try { await api.post(`/transfers/${id}/${action}`); showToast(`Transfer ${action}d`, "success"); fetchAll(); } catch (err: unknown) { showToast(String(err), "error"); }
-  }
 
   return (
     <div className="flex flex-col gap-lg">
@@ -130,6 +128,17 @@ export default function AllocationsPage() {
           employees={employees}
           onClose={() => setShowTransfer(null)}
           onDone={() => { setShowTransfer(null); fetchAll(); }}
+        />
+      )}
+      {showTransferAction && (
+        <ApproveRejectModal
+          transferReq={showTransferAction.req}
+          action={showTransferAction.action}
+          onClose={() => setShowTransferAction(null)}
+          onDone={() => {
+            setShowTransferAction(null);
+            fetchAll();
+          }}
         />
       )}
     </div>
@@ -279,6 +288,85 @@ function TransferModal({ assetTag, employees, onClose, onDone }: { assetTag: str
           <Button type="submit" loading={saving}>Request Transfer</Button>
         </div>
       </form>
+    </Modal>
+  );
+}
+
+function ApproveRejectModal({
+  transferReq,
+  action,
+  onClose,
+  onDone,
+}: {
+  transferReq: TransferReq;
+  action: "approve" | "reject";
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [saving, setSaving] = useState(false);
+
+  const handleAction = async () => {
+    setSaving(true);
+    try {
+      await api.post(`/transfers/${transferReq.id}/${action}`);
+      showToast(`Transfer request ${action === "approve" ? "approved" : "rejected"}`, "success");
+      onDone();
+    } catch (err: unknown) {
+      showToast(String(err), "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const title = action === "approve" ? "Approve Transfer" : "Reject Transfer";
+
+  return (
+    <Modal open onClose={onClose} title={title}>
+      <div className="flex flex-col gap-md">
+        <p style={{ margin: 0, color: "var(--color-text-secondary)" }}>
+          Are you sure you want to {action} the transfer request for asset <strong>{transferReq.assetTag}</strong>?
+        </p>
+
+        <div
+          style={{
+            background: "var(--color-muted-light, #f3f4f6)",
+            padding: "16px",
+            borderRadius: "var(--radius-md)",
+            border: "1px solid var(--color-border)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+            marginTop: "8px",
+            fontSize: "14px",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span style={{ color: "var(--color-text-secondary)" }}>Asset Tag:</span>
+            <strong style={{ color: "var(--color-text)" }}>{transferReq.assetTag}</strong>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span style={{ color: "var(--color-text-secondary)" }}>From:</span>
+            <strong style={{ color: "var(--color-text)" }}>{transferReq.fromEmployeeName}</strong>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span style={{ color: "var(--color-text-secondary)" }}>To:</span>
+            <strong style={{ color: "var(--color-text)" }}>{transferReq.toEmployeeName}</strong>
+          </div>
+        </div>
+
+        <div className="modal-footer" style={{ padding: 0, border: "none", marginTop: "16px" }}>
+          <Button variant="secondary" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button
+            variant={action === "approve" ? "primary" : "danger"}
+            onClick={handleAction}
+            loading={saving}
+          >
+            {action === "approve" ? "Approve" : "Reject"}
+          </Button>
+        </div>
+      </div>
     </Modal>
   );
 }

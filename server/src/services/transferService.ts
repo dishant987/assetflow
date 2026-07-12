@@ -5,7 +5,7 @@ import { assets } from "../models/assets";
 import { employees } from "../models/employees";
 import { departments } from "../models/departments";
 import { AppError } from "../utils/AppError";
-import { eq, and, isNull, sql } from "drizzle-orm";
+import { eq, and, desc, isNull, sql } from "drizzle-orm";
 import * as notificationService from "./notificationService";
 import * as activityLog from "./activityLogService";
 
@@ -26,10 +26,10 @@ export async function list() {
     })
     .from(transferRequests)
     .leftJoin(assets, eq(transferRequests.assetId, assets.id))
-    .leftJoin(employees as never, sql`e1.id = ${transferRequests.fromEmployeeId}`)
+    .leftJoin(sql`employees e1`, sql`e1.id = ${transferRequests.fromEmployeeId}`)
     .leftJoin(sql`employees e2`, sql`e2.id = ${transferRequests.toEmployeeId}`)
     .leftJoin(departments, eq(transferRequests.fromDepartmentId, departments.id))
-    .orderBy(transferRequests.requestedAt);
+    .orderBy(desc(transferRequests.requestedAt));
 }
 
 export async function create(data: {
@@ -39,6 +39,11 @@ export async function create(data: {
   notes?: string;
 }) {
   const [req] = await db.insert(transferRequests).values(data).returning();
+
+  await db
+    .update(allocations)
+    .set({ status: "transfer_pending" })
+    .where(and(eq(allocations.assetId, data.assetId), eq(allocations.status, "active")));
 
   await notificationService.create({
     employeeId: data.toEmployeeId,
@@ -64,7 +69,7 @@ export async function approve(id: string, approvedBy: string) {
   await db
     .update(allocations)
     .set({ status: "returned", returnedAt: new Date() })
-    .where(and(eq(allocations.assetId, req.assetId), eq(allocations.status, "active")));
+    .where(and(eq(allocations.assetId, req.assetId), sql`${allocations.status} IN ('active', 'transfer_pending')`));
 
   // Create new allocation
   await db
@@ -104,6 +109,11 @@ export async function reject(id: string, approvedBy: string) {
     .limit(1);
   if (!req) throw new AppError("NOT_FOUND", "Transfer request not found.", 404);
   if (req.status !== "pending") throw new AppError("ALREADY_PROCESSED", "This request has already been processed.", 400);
+
+  await db
+    .update(allocations)
+    .set({ status: "active" })
+    .where(and(eq(allocations.assetId, req.assetId), eq(allocations.status, "transfer_pending")));
 
   const [updated] = await db
     .update(transferRequests)

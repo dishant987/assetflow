@@ -4,7 +4,7 @@ import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { enUS } from "date-fns/locale";
 import "react-big-calendar/lib/css/react-big-calendar.css";
-import { Button, Modal, Input, Card, StatusBadge, showToast, PageLoader, EmptyState } from "../components/ui";
+import { Button, Modal, Input, Select, Card, StatusBadge, showToast, PageLoader, EmptyState } from "../components/ui";
 import api from "../lib/api";
 
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales: { "en-US": enUS } });
@@ -85,18 +85,21 @@ export default function BookingsPage() {
 }
 
 function CreateBookingModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
-  const [form, setForm] = useState({ assetTag: "", purpose: "", slotStart: "", slotEnd: "" });
+  const [form, setForm] = useState({ assetId: "", purpose: "", slotStart: "", slotEnd: "" });
   const [saving, setSaving] = useState(false);
   const [overlap, setOverlap] = useState<{ start: string; end: string } | null>(null);
+  const [assets, setAssets] = useState<{ id: string; name: string; assetTag: string }[]>([]);
+
+  useEffect(() => {
+    api.get("/assets").then((r) => setAssets(r.data.data.filter((a: { bookable: number; status: string }) => a.bookable === 1 && a.status === "available"))).catch(() => {});
+  }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setOverlap(null);
     try {
-      const asset = await api.get(`/assets?search=${form.assetTag}`);
-      if (!asset.data.data.length) { showToast("Asset not found", "error"); setSaving(false); return; }
-      await api.post("/bookings", { assetId: asset.data.data[0].id, purpose: form.purpose, slotStart: new Date(form.slotStart).toISOString(), slotEnd: new Date(form.slotEnd).toISOString() });
+      await api.post("/bookings", { assetId: form.assetId, purpose: form.purpose, slotStart: new Date(form.slotStart).toISOString(), slotEnd: new Date(form.slotEnd).toISOString() });
       showToast("Booking created", "success");
       onDone();
     } catch (err: unknown) {
@@ -113,7 +116,7 @@ function CreateBookingModal({ onClose, onDone }: { onClose: () => void; onDone: 
   return (
     <Modal open onClose={onClose} title="New Booking">
       <form onSubmit={handleCreate} className="flex flex-col gap-md">
-        <Input label="Asset Tag" value={form.assetTag} onChange={(e) => setForm({ ...form, assetTag: e.target.value })} required placeholder="e.g. AF-0114" />
+        <Select label="Asset" value={form.assetId} onChange={(e) => setForm({ ...form, assetId: e.target.value })} required placeholder="Select bookable asset..." options={assets.map((a) => ({ value: a.id, label: `${a.name} (${a.assetTag})` }))} />
         <Input label="Purpose" value={form.purpose} onChange={(e) => setForm({ ...form, purpose: e.target.value })} />
         <Input label="Start" type="datetime-local" value={form.slotStart} onChange={(e) => setForm({ ...form, slotStart: e.target.value })} required />
         <Input label="End" type="datetime-local" value={form.slotEnd} onChange={(e) => setForm({ ...form, slotEnd: e.target.value })} required />
